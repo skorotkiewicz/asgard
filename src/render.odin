@@ -50,22 +50,38 @@ map_origin :: proc() -> (ox: i32, oy: i32) {
 	return 12, UI_TOP_PX
 }
 
+// Multiply RGB channels by `factor` (alpha preserved). Used to dim explored-
+// but-not-visible tiles.
+dim :: proc(c: rl.Color, factor: f32) -> rl.Color {
+	return rl.Color{
+		u8(f32(c.r) * factor),
+		u8(f32(c.g) * factor),
+		u8(f32(c.b) * factor),
+		c.a,
+	}
+}
+
+VIS_DIM :: f32(0.35)
+
 // ---- world drawing ---------------------------------------------------------
 
 draw_map :: proc(g: ^Game) {
 	ox, oy := map_origin()
 	for y in 0 ..< MAP_H {
 		for x in 0 ..< MAP_W {
+			i := y * MAP_W + x
+			if !g.explored[i] { continue } // never seen → leave as background
+			factor: f32 = VIS_DIM
+			if g.visible[i] { factor = 1.0 }
 			px := ox + i32(x) * TILE_PX
 			py := oy + i32(y) * TILE_PX
-			t := g.tiles[y * MAP_W + x]
-			switch t {
+			switch g.tiles[i] {
 			case .Wall:
-				draw_glyph("#", px, py, TILE_PX, PALETTE.wall)
+				draw_glyph("#", px, py, TILE_PX, dim(PALETTE.wall, factor))
 			case .Floor:
-				draw_glyph(".", px, py, TILE_PX, PALETTE.floor)
+				draw_glyph(".", px, py, TILE_PX, dim(PALETTE.floor, factor))
 			case .Stairs_Down:
-				draw_glyph(">", px, py, TILE_PX, PALETTE.stairs)
+				draw_glyph(">", px, py, TILE_PX, dim(PALETTE.stairs, factor))
 			}
 		}
 	}
@@ -80,8 +96,13 @@ draw_entity :: proc(e: ^Entity) {
 }
 
 draw_entities :: proc(g: ^Game) {
-	for &e in g.enemies { draw_entity(&e) }
-	draw_entity(&g.player) // draw player on top
+	// only draw enemies the player can currently see
+	for &e in g.enemies {
+		if !e.alive { continue }
+		if !g.visible[e.y * MAP_W + e.x] { continue }
+		draw_entity(&e)
+	}
+	draw_entity(&g.player) // hero is always at the centre of FOV
 }
 
 // ---- UI chrome -------------------------------------------------------------

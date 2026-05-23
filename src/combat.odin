@@ -3,8 +3,6 @@ package asgard
 import "core:fmt"
 import "core:math/rand"
 
-AGGRO_RADIUS :: 8
-
 // ---- entity factories ------------------------------------------------------
 
 make_player :: proc() -> Entity {
@@ -99,8 +97,10 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 enemy_turn :: proc(g: ^Game) {
 	for &e in g.enemies {
 		if !e.alive { continue }
+		// only act if currently in the player's line of sight
+		if !g.visible[e.y * MAP_W + e.x] { continue }
+
 		dist := cheb_dist(e.x, e.y, g.player.x, g.player.y)
-		if dist > AGGRO_RADIUS { continue }
 
 		// adjacent → attack
 		if dist == 1 {

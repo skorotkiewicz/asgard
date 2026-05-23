@@ -57,8 +57,12 @@ generate_map :: proc(g: ^Game, seed: u64) {
 	rand.reset(seed)
 	g.seed = seed
 
-	// start filled with walls
-	for i in 0 ..< len(g.tiles) { g.tiles[i] = .Wall }
+	// start filled with walls; clear all FOV state
+	for i in 0 ..< len(g.tiles) {
+		g.tiles[i]    = .Wall
+		g.visible[i]  = false
+		g.explored[i] = false
+	}
 
 	rooms := make([dynamic]Room, 0, MAX_ROOMS)
 	defer delete(rooms)

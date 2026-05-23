@@ -59,15 +59,17 @@ Room :: struct {
 }
 
 Game :: struct {
-	tiles:   [MAP_W * MAP_H]Tile,
-	player:  Entity,
-	enemies: [dynamic]Entity,
-	realm:   Realm,
-	turn:    int,
-	seed:    u64,
-	log:     [dynamic]string,
-	dead:    bool,
-	quit:    bool,
+	tiles:    [MAP_W * MAP_H]Tile,
+	visible:  [MAP_W * MAP_H]bool,
+	explored: [MAP_W * MAP_H]bool,
+	player:   Entity,
+	enemies:  [dynamic]Entity,
+	realm:    Realm,
+	turn:     int,
+	seed:     u64,
+	log:      [dynamic]string,
+	dead:     bool,
+	quit:     bool,
 }
 
 // ---- tile helpers ----------------------------------------------------------
@@ -102,6 +104,7 @@ new_game :: proc(seed: u64) -> Game {
 	g.enemies = make([dynamic]Entity, 0, 16)
 	g.log     = make([dynamic]string, 0, 32)
 	generate_map(&g, seed)
+	compute_fov(&g, g.player.x, g.player.y, FOV_RADIUS)
 	log_msg(&g, "You awaken in a stone chamber. Cold mist clings to the floor.")
 	log_msg(&g, "Somewhere, Yggdrasil's roots stir. Draugr stir with them.")
 	log_msg(&g, fmt.tprintf("(seed %d - press R to reshape the realm)", g.seed))
@@ -119,6 +122,7 @@ regenerate :: proc(g: ^Game) {
 	g.dead   = false
 	g.turn   = 0
 	generate_map(g, fresh_seed())
+	compute_fov(g, g.player.x, g.player.y, FOV_RADIUS)
 	log_msg(g, fmt.tprintf("The realm reshapes itself. (seed %d)", g.seed))
 }
 
@@ -176,6 +180,7 @@ handle_input :: proc(g: ^Game) {
 	if !acted { return }
 	if try_step(g, dx, dy) {
 		g.turn += 1
+		compute_fov(g, g.player.x, g.player.y, FOV_RADIUS)
 		if !g.dead {
 			enemy_turn(g)
 		}

@@ -4,7 +4,7 @@ A turn-based roguelike set across the Nine Realms of Norse mythology, written in
 
 ## Status
 
-Early prototype. Currently: procedurally generated Midgard dungeon with rooms and corridors, a hero, draugr that chase and bite, no items, no real Yggdrasil yet.
+Early prototype. Currently: procedurally generated Midgard dungeon with rooms and corridors, a hero, draugr that ambush from the shadows, field-of-view-limited vision with explored memory, no items, no real Yggdrasil yet.
 
 ## Source layout
 
@@ -16,6 +16,7 @@ All files are in the same `asgard` package, so cross-file references are free.
 | `src/game.odin`   | Types (Tile / Realm / Entity / Room / Game), lifecycle, input/turn loop |
 | `src/worldgen.odin` | Seeded map generation: rooms, corridors, enemy spawn |
 | `src/combat.odin` | Entity factories, combat math, enemy AI                |
+| `src/fov.odin`    | Recursive shadowcasting field of view                  |
 | `src/render.odin` | Palette and all raylib drawing                         |
 
 ## Build
@@ -44,7 +45,7 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] Turn counter, message log
 - [x] Procedural map generation (rooms + corridors)
 - [x] First enemy + bump combat (draugr with greedy chase AI)
-- [ ] Field of view (shadowcasting)
+- [x] Field of view (recursive shadowcasting, explored memory)
 - [ ] More enemies (jotnar, trolls, Hel's hounds)
 - [ ] Items + inventory (runes, mead, weapons)
 - [ ] Stairs between the Nine Realms via Yggdrasil

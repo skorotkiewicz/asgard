@@ -30,6 +30,18 @@ SoundKind :: enum {
 @(private="file")
 sounds: [SoundKind]rl.Sound
 
+// Session-only SFX toggle. Survives New Game so user preferences aren't
+// wiped on restart, reset to default each app launch. Defaults to on
+// because hit feedback is part of how combat reads.
+@(private="file") sfx_enabled: bool = true
+
+is_sfx_enabled :: proc() -> bool { return sfx_enabled }
+
+set_sfx_enabled :: proc(on: bool) {
+	sfx_enabled = on
+	// play_sound consults sfx_enabled at call-time — no immediate action needed.
+}
+
 audio_init :: proc() {
 	rl.InitAudioDevice()
 	sounds[.Player_Strike] = make_sound(0.12, gen_player_strike)
@@ -55,6 +67,7 @@ audio_shutdown :: proc() {
 }
 
 play_sound :: proc(kind: SoundKind) {
+	if !sfx_enabled { return }
 	rl.PlaySound(sounds[kind])
 }
 

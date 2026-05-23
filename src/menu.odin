@@ -18,22 +18,26 @@ MenuAction :: enum {
 	New_Game,
 	Exit,
 	Toggle_Music,
+	Toggle_SFX,
 	Back,
 }
 
 MAIN_MENU_ITEMS     := [?]MenuAction{.Resume, .Settings, .New_Game, .Exit}
-SETTINGS_MENU_ITEMS := [?]MenuAction{.Toggle_Music, .Back}
+SETTINGS_MENU_ITEMS := [?]MenuAction{.Toggle_Music, .Toggle_SFX, .Back}
 
 menu_label :: proc(a: MenuAction) -> cstring {
 	switch a {
-	case .Resume:       return "Resume"
-	case .Settings:     return "Settings"
-	case .New_Game:     return "New Game"
-	case .Exit:         return "Exit"
+	case .Resume:        return "Resume"
+	case .Settings:      return "Settings"
+	case .New_Game:      return "New Game"
+	case .Exit:          return "Exit"
 	case .Toggle_Music:
-		if is_music_enabled() { return "Music:  ON" }
-		return "Music:  OFF"
-	case .Back:         return "Back"
+		if is_music_enabled() { return "Music:     ON" }
+		return "Music:     OFF"
+	case .Toggle_SFX:
+		if is_sfx_enabled() { return "Sound FX:  ON" }
+		return "Sound FX:  OFF"
+	case .Back:          return "Back"
 	}
 	return "?"
 }
@@ -109,7 +113,9 @@ activate_menu_item :: proc(g: ^Game, action: MenuAction) {
 		g.quit = true
 	case .Toggle_Music:
 		set_music_enabled(!is_music_enabled())
-		// stay on Settings, keep selection on the toggle so the label flip is visible
+	case .Toggle_SFX:
+		set_sfx_enabled(!is_sfx_enabled())
+		// Both: stay on Settings; the label flip provides feedback.
 	case .Back:
 		g.menu_screen    = .Main
 		g.menu_selection = 0

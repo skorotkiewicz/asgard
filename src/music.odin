@@ -32,9 +32,10 @@ NoteEvent :: struct {
 @(private="file") current_realm:     Realm
 @(private="file") current_realm_set: bool
 
-// Session-only music toggle (defaults to on). Survives New Game so the
-// user's preference isn't wiped on restart.
-@(private="file") music_enabled:     bool = true
+// Session-only music toggle. Defaults to off — the player opts in via
+// Settings rather than being greeted by ambient drone on first launch.
+// Survives New Game so the user's preference isn't wiped on restart.
+@(private="file") music_enabled:     bool = false
 
 is_music_enabled :: proc() -> bool { return music_enabled }
 

@@ -126,4 +126,17 @@ generate_map :: proc(g: ^Game, seed: u64) {
 		if tile_at(g, ex, ey) == .Stairs_Down { continue }
 		append(&g.enemies, make_draugr(ex, ey))
 	}
+
+	// scatter items in non-starting rooms (avoid stairs, avoid enemies)
+	clear(&g.items)
+	for i in 1 ..< len(rooms) {
+		if rand.int_max(100) >= ITEM_SPAWN_PCT { continue }
+		r := rooms[i]
+		ix := r.x + 1 + rand.int_max(max(1, r.w - 2))
+		iy := r.y + 1 + rand.int_max(max(1, r.h - 2))
+		if tile_at(g, ix, iy) == .Stairs_Down { continue }
+		if enemy_at(g, ix, iy) != nil          { continue }
+		if item_at(g, ix, iy) >= 0             { continue }
+		append(&g.items, Item{x = ix, y = iy, kind = pick_item_kind()})
+	}
 }

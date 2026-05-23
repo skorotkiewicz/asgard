@@ -63,10 +63,32 @@ dim :: proc(c: rl.Color, factor: f32) -> rl.Color {
 
 VIS_DIM :: f32(0.35)
 
+// ---- realm palettes --------------------------------------------------------
+
+RealmColors :: struct {
+	bg, wall, floor: rl.Color,
+}
+
+realm_colors :: proc(r: Realm) -> RealmColors {
+	switch r {
+	case .Midgard:      return RealmColors{bg = { 12,  12,  18, 255}, wall = { 90,  80,  70, 255}, floor = { 55,  55,  65, 255}}
+	case .Asgard:       return RealmColors{bg = { 18,  16,  30, 255}, wall = {170, 140,  80, 255}, floor = { 70,  65,  90, 255}}
+	case .Jotunheim:    return RealmColors{bg = { 16,  22,  30, 255}, wall = {130, 140, 160, 255}, floor = { 60,  70,  90, 255}}
+	case .Niflheim:     return RealmColors{bg = { 22,  30,  40, 255}, wall = {170, 200, 220, 255}, floor = { 80, 100, 120, 255}}
+	case .Muspelheim:   return RealmColors{bg = { 30,  10,  10, 255}, wall = {210,  90,  40, 255}, floor = {120,  50,  30, 255}}
+	case .Alfheim:      return RealmColors{bg = { 14,  28,  22, 255}, wall = {180, 220, 170, 255}, floor = { 70, 110,  90, 255}}
+	case .Svartalfheim: return RealmColors{bg = { 10,  10,  14, 255}, wall = { 80,  70,  95, 255}, floor = { 38,  40,  55, 255}}
+	case .Vanaheim:     return RealmColors{bg = { 18,  30,  24, 255}, wall = {140, 170, 140, 255}, floor = { 70,  95,  80, 255}}
+	case .Helheim:      return RealmColors{bg = { 12,   6,  14, 255}, wall = { 90,  50,  70, 255}, floor = { 40,  20,  35, 255}}
+	}
+	return RealmColors{bg = PALETTE.bg, wall = PALETTE.wall, floor = PALETTE.floor}
+}
+
 // ---- world drawing ---------------------------------------------------------
 
 draw_map :: proc(g: ^Game) {
 	ox, oy := map_origin()
+	colors := realm_colors(g.realm)
 	for y in 0 ..< MAP_H {
 		for x in 0 ..< MAP_W {
 			i := y * MAP_W + x
@@ -77,13 +99,23 @@ draw_map :: proc(g: ^Game) {
 			py := oy + i32(y) * TILE_PX
 			switch g.tiles[i] {
 			case .Wall:
-				draw_glyph("#", px, py, TILE_PX, dim(PALETTE.wall, factor))
+				draw_glyph("#", px, py, TILE_PX, dim(colors.wall, factor))
 			case .Floor:
-				draw_glyph(".", px, py, TILE_PX, dim(PALETTE.floor, factor))
+				draw_glyph(".", px, py, TILE_PX, dim(colors.floor, factor))
 			case .Stairs_Down:
 				draw_glyph(">", px, py, TILE_PX, dim(PALETTE.stairs, factor))
 			}
 		}
+	}
+}
+
+draw_items :: proc(g: ^Game) {
+	ox, oy := map_origin()
+	for &it in g.items {
+		if !g.visible[it.y * MAP_W + it.x] { continue }
+		px := ox + i32(it.x) * TILE_PX
+		py := oy + i32(it.y) * TILE_PX
+		draw_glyph(item_glyph(it.kind), px, py, TILE_PX, item_color(it.kind))
 	}
 }
 
@@ -109,7 +141,10 @@ draw_entities :: proc(g: ^Game) {
 
 draw_top_bar :: proc(g: ^Game) {
 	rl.DrawRectangle(0, 0, WINDOW_W, UI_TOP_PX - 4, PALETTE.ui_panel)
-	title := fmt.ctprintf("ASGARD  -  %s  -  Turn %d", realm_name(g.realm), g.turn)
+	title := fmt.ctprintf(
+		"ASGARD  -  %s  -  Depth %d  -  Turn %d",
+		realm_name(g.realm), g.depth, g.turn,
+	)
 	rl.DrawText(title, 12, 10, 22, PALETTE.ui_fg)
 	seed_label := fmt.ctprintf("seed %d", g.seed)
 	rl.DrawText(seed_label, WINDOW_W - UI_RIGHT_PX + 12, 14, 16, PALETTE.ui_dim)
@@ -148,13 +183,25 @@ draw_sidebar :: proc(g: ^Game) {
 		x + 12, UI_TOP_PX + 92, 16, PALETTE.ui_fg,
 	)
 
-	hint_y := i32(UI_TOP_PX + 140)
+	// Pack
+	pack_y := i32(UI_TOP_PX + 120)
+	rl.DrawText(
+		fmt.ctprintf("Pack  (%d/%d)", len(g.inventory), INVENTORY_CAP),
+		x + 12, pack_y, 16, PALETTE.ui_fg,
+	)
+	for kind, i in g.inventory {
+		line := fmt.ctprintf(" %d  %s", i + 1, item_name(kind))
+		rl.DrawText(line, x + 12, pack_y + 22 + i32(i) * 18, 14, item_color(kind))
+	}
+
+	hint_y := i32(UI_TOP_PX + 260)
 	rl.DrawText("Controls",            x + 12, hint_y,        16, PALETTE.ui_fg)
 	rl.DrawText("Arrows / h j k l",    x + 12, hint_y + 24,   14, PALETTE.ui_dim)
 	rl.DrawText("y u b n  diagonals",  x + 12, hint_y + 44,   14, PALETTE.ui_dim)
 	rl.DrawText(".  wait",             x + 12, hint_y + 64,   14, PALETTE.ui_dim)
-	rl.DrawText("R  reshape realm",    x + 12, hint_y + 84,   14, PALETTE.ui_dim)
-	rl.DrawText("Esc / q  quit",       x + 12, hint_y + 104,  14, PALETTE.ui_dim)
+	rl.DrawText("1-6  use pack slot",  x + 12, hint_y + 84,   14, PALETTE.ui_dim)
+	rl.DrawText("R  reshape realm",    x + 12, hint_y + 104,  14, PALETTE.ui_dim)
+	rl.DrawText("Esc / q  quit",       x + 12, hint_y + 124,  14, PALETTE.ui_dim)
 }
 
 draw_log :: proc(g: ^Game) {
@@ -188,9 +235,10 @@ draw_game_over :: proc(g: ^Game) {
 
 render :: proc(g: ^Game) {
 	rl.BeginDrawing()
-	rl.ClearBackground(PALETTE.bg)
+	rl.ClearBackground(realm_colors(g.realm).bg)
 	draw_top_bar(g)
 	draw_map(g)
+	draw_items(g)
 	draw_entities(g)
 	draw_sidebar(g)
 	draw_log(g)

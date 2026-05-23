@@ -21,6 +21,7 @@ SoundKind :: enum {
 	Draugr_Strike,  // a draugr's rasping attack
 	Jotunn_Strike,  // a frost giant's heavy boom
 	Hound_Strike,   // a hound's sharp bite/snap
+	Hel_Strike,     // Hel's slow dissonant wail
 	Pickup,         // item picked up
 	Use_Item,       // any pack slot consumed
 	Descend,        // stepped through the World Tree
@@ -35,6 +36,7 @@ audio_init :: proc() {
 	sounds[.Draugr_Strike] = make_sound(0.25, gen_draugr_strike)
 	sounds[.Jotunn_Strike] = make_sound(0.30, gen_jotunn_strike)
 	sounds[.Hound_Strike]  = make_sound(0.08, gen_hound_strike)
+	sounds[.Hel_Strike]    = make_sound(0.40, gen_hel_strike)
 	sounds[.Pickup]        = make_sound(0.12, gen_pickup)
 	sounds[.Use_Item]      = make_sound(0.20, gen_use_item)
 	sounds[.Descend]       = make_sound(0.40, gen_descend)
@@ -130,6 +132,31 @@ gen_jotunn_strike :: proc(t: f32) -> f32 {
 
 	amp_env := math.exp(-t * 14) // long tail
 	return math.sin(phase) * amp_env * 0.9
+}
+
+// Hel's wail: long ASR envelope over a low fundamental and a tritone
+// dissonance (113 Hz above 80 Hz ≈ tritone — unsettled, not musical).
+// A whisper of noise layered on top. Reads as ominous, slow, distinctly
+// "boss" energy — longer than any normal enemy strike.
+@(private="file")
+gen_hel_strike :: proc(t: f32) -> f32 {
+	ATK :: f32(0.08)
+	SUS :: f32(0.28)
+	END :: f32(0.40)
+
+	env: f32
+	switch {
+	case t < ATK: env = t / ATK
+	case t < SUS: env = 1.0
+	case:         env = (END - t) / (END - SUS)
+	}
+	if env < 0 { env = 0 }
+
+	low       := math.sin(t *  80 * TAU) * 0.40
+	dissonant := math.sin(t * 113 * TAU) * 0.25
+	whisper   := (rand.float32() * 2 - 1)  * 0.08
+
+	return env * (low + dissonant + whisper)
 }
 
 // Hound's bite: sharp noise click + brief high tone. Very short (~60ms) —

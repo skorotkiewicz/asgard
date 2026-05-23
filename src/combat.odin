@@ -70,10 +70,30 @@ make_hound :: proc(x, y: int) -> Entity {
 	}
 }
 
+// Hel — queen of the dishonoured dead, sole boss. Acts twice per turn like
+// a hound but hits like a small jotunn. Killing her wins the run.
+make_hel :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "H",
+		name          = "Hel",
+		color         = PALETTE.hel,
+		hp            = 14,
+		hp_max        = 14,
+		power         = 4,
+		armor         = 1,
+		alive         = true,
+		attack_sound  = .Hel_Strike,
+		extra_actions = 1,
+		is_boss       = true,
+	}
+}
+
 EnemyKind :: enum {
 	Draugr,
 	Jotunn,
 	Hound,
+	Hel,
 }
 
 make_enemy :: proc(kind: EnemyKind, x, y: int) -> Entity {
@@ -81,6 +101,7 @@ make_enemy :: proc(kind: EnemyKind, x, y: int) -> Entity {
 	case .Draugr: return make_draugr(x, y)
 	case .Jotunn: return make_jotunn(x, y)
 	case .Hound:  return make_hound(x, y)
+	case .Hel:    return make_hel(x, y)
 	}
 	return make_draugr(x, y)
 }
@@ -146,6 +167,10 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 		if defender == &g.player {
 			log_msg(g, "You have fallen. The realm grows still.")
 			g.dead = true
+		} else if defender.is_boss {
+			log_msg(g, fmt.tprintf("%s falls. The cold lifts from your bones.", defender.name))
+			log_msg(g, "Ragnarok ends. The Nine Realms exhale.")
+			g.won = true
 		} else {
 			log_msg(g, fmt.tprintf("The %s crumbles to dust.", defender.name))
 		}

@@ -29,6 +29,7 @@ PALETTE := struct {
 	draugr:    rl.Color,
 	jotunn:    rl.Color,
 	hound:     rl.Color,
+	hel:       rl.Color,
 	ui_fg:     rl.Color,
 	ui_dim:    rl.Color,
 	ui_panel:  rl.Color,
@@ -45,6 +46,7 @@ PALETTE := struct {
 	draugr    = {150, 180, 130, 255},
 	jotunn    = {180, 200, 220, 255}, // pale icy blue
 	hound     = {200,  70,  60, 255}, // dark red
+	hel       = {200, 150, 210, 255}, // pale violet, half-corpse
 	ui_fg     = {220, 220, 210, 255},
 	ui_dim    = {130, 130, 140, 255},
 	ui_panel  = {22, 22, 30, 255},
@@ -271,6 +273,21 @@ draw_game_over :: proc(g: ^Game) {
 	rl.DrawText(hint, (WINDOW_W - hw) / 2, WINDOW_H / 2 + 10, 20, PALETTE.ui_fg)
 }
 
+draw_victory :: proc(g: ^Game) {
+	if !g.won { return }
+	// Warm pale tint (vs the dead screen's red)
+	rl.DrawRectangle(0, 0, WINDOW_W, WINDOW_H, {30, 20, 40, 170})
+	msg : cstring = "RAGNAROK ENDS"
+	sub : cstring = "Hel has fallen. The Nine Realms exhale."
+	hint: cstring = "press R for a new dawn  -  Esc for menu"
+	mw := rl.MeasureText(msg, 56)
+	sw := rl.MeasureText(sub, 22)
+	hw := rl.MeasureText(hint, 20)
+	rl.DrawText(msg,  (WINDOW_W - mw) / 2, WINDOW_H / 2 - 80, 56, PALETTE.player)
+	rl.DrawText(sub,  (WINDOW_W - sw) / 2, WINDOW_H / 2 - 10, 22, PALETTE.hel)
+	rl.DrawText(hint, (WINDOW_W - hw) / 2, WINDOW_H / 2 + 30, 20, PALETTE.ui_fg)
+}
+
 // ---- frame -----------------------------------------------------------------
 
 render :: proc(g: ^Game) {
@@ -283,6 +300,7 @@ render :: proc(g: ^Game) {
 	draw_sidebar(g)
 	draw_log(g)
 	draw_game_over(g)
+	draw_victory(g)
 	draw_menu(g)
 	rl.EndDrawing()
 	free_all(context.temp_allocator)

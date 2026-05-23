@@ -78,6 +78,7 @@ Entity :: struct {
 	cooldown:      int,
 	cooldown_max:  int,
 	extra_actions: int,
+	is_boss:       bool, // when killed, sets g.won and triggers victory
 }
 
 Room :: struct {
@@ -98,6 +99,7 @@ Game :: struct {
 	seed:            u64,
 	log:             [dynamic]string,
 	dead:            bool,
+	won:             bool, // true after Hel falls; locks input like dead
 	quit:            bool,
 	descend_pending: bool,
 
@@ -166,6 +168,7 @@ destroy_game :: proc(g: ^Game) {
 regenerate :: proc(g: ^Game) {
 	g.player          = make_player()
 	g.dead            = false
+	g.won             = false
 	g.turn            = 0
 	g.depth           = 1
 	g.realm           = .Midgard
@@ -307,8 +310,8 @@ handle_input :: proc(g: ^Game) {
 		regenerate(g)
 		return
 	}
-	if g.dead {
-		return // only Esc (menu) and R respond when fallen
+	if g.dead || g.won {
+		return // only Esc (menu) and R respond when the run is over
 	}
 
 	if slot := read_item_slot(); slot >= 0 {

@@ -19,6 +19,7 @@ All files are in the same `asgard` package, so cross-file references are free.
 | `src/fov.odin`    | Recursive shadowcasting field of view                  |
 | `src/items.odin`  | Item kinds, pickup, use effects                        |
 | `src/audio.odin`  | Procedurally-synthesized SFX (no asset files)          |
+| `src/music.odin`  | Per-realm looping drone music, also synthesized        |
 | `src/render.odin` | Palette and all raylib drawing                         |
 
 ## Build
@@ -52,6 +53,7 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] Stairs between the Nine Realms via Yggdrasil (per-realm palette + flavor)
 - [x] Items + inventory (mead heals; rune of fire burns visible foes; rune of sight reveals map)
 - [x] Hit flash + screen shake + procedurally-synthesized SFX
+- [x] Per-realm background music (looping drones with realm-specific tonality)
 - [ ] More enemies (jotnar, trolls, Hel's hounds) — tougher in deeper realms
 - [ ] More item kinds (weapons, armor, throwing axes, scrolls of recall)
 - [ ] Bosses (Fenrir, Jormungandr, Surtr, Hel)

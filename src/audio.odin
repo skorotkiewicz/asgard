@@ -37,9 +37,11 @@ audio_init :: proc() {
 	for k in SoundKind {
 		rl.SetSoundVolume(sounds[k], MASTER_VOLUME)
 	}
+	music_init()
 }
 
 audio_shutdown :: proc() {
+	music_shutdown()
 	for k in SoundKind {
 		rl.UnloadSound(sounds[k])
 	}

@@ -22,6 +22,7 @@ main :: proc() {
 	for !rl.WindowShouldClose() && !g.quit {
 		handle_input(&g)
 		tick_anim(&g)
+		tick_music()
 		render(&g)
 	}
 

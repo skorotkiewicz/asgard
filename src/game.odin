@@ -137,6 +137,7 @@ new_game :: proc(seed: u64) -> Game {
 	g.log       = make([dynamic]string,   0, 32)
 	generate_map(&g, seed)
 	compute_fov(&g, g.player.x, g.player.y, FOV_RADIUS)
+	play_realm_music(g.realm)
 	log_msg(&g, "You awaken in a stone chamber. Cold mist clings to the floor.")
 	log_msg(&g, "Somewhere, Yggdrasil's roots stir. Draugr stir with them.")
 	log_msg(&g, fmt.tprintf("(seed %d - press R to reshape the realm)", g.seed))
@@ -161,6 +162,7 @@ regenerate :: proc(g: ^Game) {
 	clear(&g.inventory)
 	generate_map(g, fresh_seed())
 	compute_fov(g, g.player.x, g.player.y, FOV_RADIUS)
+	play_realm_music(g.realm)
 	log_msg(g, fmt.tprintf("The realm reshapes itself. (seed %d)", g.seed))
 }
 
@@ -179,6 +181,7 @@ descend :: proc(g: ^Game) {
 	generate_map(g, fresh_seed())
 	compute_fov(g, g.player.x, g.player.y, FOV_RADIUS)
 	play_sound(.Descend)
+	play_realm_music(g.realm)
 
 	log_msg(g, fmt.tprintf("You descend to %s. (depth %d)", realm_name(g.realm), g.depth))
 	if flavor := realm_flavor(g.realm); flavor != "" {

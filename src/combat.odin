@@ -7,28 +7,30 @@ import "core:math/rand"
 
 make_player :: proc() -> Entity {
 	return Entity{
-		glyph  = "@",
-		name   = "Wanderer",
-		color  = PALETTE.player,
-		hp     = 20,
-		hp_max = 20,
-		power  = 4,
-		armor  = 1,
-		alive  = true,
+		glyph        = "@",
+		name         = "Wanderer",
+		color        = PALETTE.player,
+		hp           = 20,
+		hp_max       = 20,
+		power        = 4,
+		armor        = 1,
+		alive        = true,
+		attack_sound = .Player_Strike,
 	}
 }
 
 make_draugr :: proc(x, y: int) -> Entity {
 	return Entity{
 		x = x, y = y,
-		glyph  = "d",
-		name   = "draugr",
-		color  = PALETTE.draugr,
-		hp     = 6,
-		hp_max = 6,
-		power  = 3,
-		armor  = 0,
-		alive  = true,
+		glyph        = "d",
+		name         = "draugr",
+		color        = PALETTE.draugr,
+		hp           = 6,
+		hp_max       = 6,
+		power        = 3,
+		armor        = 0,
+		alive        = true,
+		attack_sound = .Draugr_Strike,
 	}
 }
 
@@ -77,10 +79,8 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 	defender.flash_frames = HIT_FLASH_FRAMES
 	if attacker == &g.player {
 		g.shake_frames = SHAKE_MAX_FRAMES
-		play_sound(.Enemy_Hit)
-	} else {
-		play_sound(.Player_Hit)
 	}
+	play_sound(attacker.attack_sound)
 
 	if attacker == &g.player {
 		log_msg(g, fmt.tprintf("You strike the %s (%d dmg).", defender.name, dmg))

@@ -70,7 +70,8 @@ Entity :: struct {
 	power:        int,
 	armor:        int,
 	alive:        bool,
-	flash_frames: int, // counts down each frame; > 0 = render with hit-flash color
+	flash_frames: int,       // counts down each frame; > 0 = render with hit-flash color
+	attack_sound: SoundKind, // played when THIS entity lands a hit
 }
 
 Room :: struct {

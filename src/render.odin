@@ -1,6 +1,7 @@
 package asgard
 
 import "core:fmt"
+import "core:math/rand"
 import "core:strings"
 import rl "vendor:raylib"
 
@@ -9,6 +10,14 @@ TILE_PX :: 20
 UI_TOP_PX   :: 40
 UI_BOT_PX   :: 160
 UI_RIGHT_PX :: 240
+
+// ---- combat-feedback tuning ------------------------------------------------
+
+HIT_FLASH_FRAMES :: 6                          // ~100ms at 60fps
+HIT_FLASH_COLOR  :: rl.Color{230, 80, 70, 255} // red tint applied to defender
+
+SHAKE_MAX_FRAMES :: 8                          // ~130ms at 60fps
+SHAKE_MAX_PX     :: 4                          // peak amplitude in pixels
 
 PALETTE := struct {
 	bg:        rl.Color,
@@ -46,8 +55,31 @@ draw_glyph :: proc(ch: cstring, x, y, size: i32, col: rl.Color) {
 	rl.DrawText(ch, x, y, size, col)
 }
 
-map_origin :: proc() -> (ox: i32, oy: i32) {
-	return 12, UI_TOP_PX
+// Top-left of the map area, including any active screen-shake offset.
+map_origin :: proc(g: ^Game) -> (ox: i32, oy: i32) {
+	return 12 + g.shake_dx, UI_TOP_PX + g.shake_dy
+}
+
+// Tick down visual-feedback counters and pick a fresh shake offset for the
+// upcoming frame. Called once per frame from the main loop (before render).
+tick_anim :: proc(g: ^Game) {
+	if g.player.flash_frames > 0 { g.player.flash_frames -= 1 }
+	for &e in g.enemies {
+		if e.flash_frames > 0 { e.flash_frames -= 1 }
+	}
+
+	if g.shake_frames > 0 {
+		g.shake_frames -= 1
+	}
+	if g.shake_frames > 0 {
+		mag := f32(g.shake_frames) / f32(SHAKE_MAX_FRAMES)
+		amp := int(f32(SHAKE_MAX_PX) * mag) + 1
+		g.shake_dx = i32(rand.int_max(amp * 2 + 1) - amp)
+		g.shake_dy = i32(rand.int_max(amp * 2 + 1) - amp)
+	} else {
+		g.shake_dx = 0
+		g.shake_dy = 0
+	}
 }
 
 // Multiply RGB channels by `factor` (alpha preserved). Used to dim explored-
@@ -87,7 +119,7 @@ realm_colors :: proc(r: Realm) -> RealmColors {
 // ---- world drawing ---------------------------------------------------------
 
 draw_map :: proc(g: ^Game) {
-	ox, oy := map_origin()
+	ox, oy := map_origin(g)
 	colors := realm_colors(g.realm)
 	for y in 0 ..< MAP_H {
 		for x in 0 ..< MAP_W {
@@ -110,7 +142,7 @@ draw_map :: proc(g: ^Game) {
 }
 
 draw_items :: proc(g: ^Game) {
-	ox, oy := map_origin()
+	ox, oy := map_origin(g)
 	for &it in g.items {
 		if !g.visible[it.y * MAP_W + it.x] { continue }
 		px := ox + i32(it.x) * TILE_PX
@@ -119,12 +151,16 @@ draw_items :: proc(g: ^Game) {
 	}
 }
 
-draw_entity :: proc(e: ^Entity) {
+draw_entity :: proc(g: ^Game, e: ^Entity) {
 	if !e.alive { return }
-	ox, oy := map_origin()
+	ox, oy := map_origin(g)
 	px := ox + i32(e.x) * TILE_PX
 	py := oy + i32(e.y) * TILE_PX
-	draw_glyph(e.glyph, px, py, TILE_PX, e.color)
+	col := e.color
+	if e.flash_frames > 0 {
+		col = HIT_FLASH_COLOR
+	}
+	draw_glyph(e.glyph, px, py, TILE_PX, col)
 }
 
 draw_entities :: proc(g: ^Game) {
@@ -132,9 +168,9 @@ draw_entities :: proc(g: ^Game) {
 	for &e in g.enemies {
 		if !e.alive { continue }
 		if !g.visible[e.y * MAP_W + e.x] { continue }
-		draw_entity(&e)
+		draw_entity(g, &e)
 	}
-	draw_entity(&g.player) // hero is always at the centre of FOV
+	draw_entity(g, &g.player) // hero is always at the centre of FOV
 }
 
 // ---- UI chrome -------------------------------------------------------------

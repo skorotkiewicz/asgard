@@ -61,15 +61,16 @@ realm_flavor :: proc(r: Realm) -> string {
 }
 
 Entity :: struct {
-	x, y:        int,
-	glyph:       cstring,
-	name:        string,
-	color:       rl.Color,
-	hp:          int,
-	hp_max:      int,
-	power:       int,
-	armor:       int,
-	alive:       bool,
+	x, y:         int,
+	glyph:        cstring,
+	name:         string,
+	color:        rl.Color,
+	hp:           int,
+	hp_max:       int,
+	power:        int,
+	armor:        int,
+	alive:        bool,
+	flash_frames: int, // counts down each frame; > 0 = render with hit-flash color
 }
 
 Room :: struct {
@@ -92,6 +93,11 @@ Game :: struct {
 	dead:            bool,
 	quit:            bool,
 	descend_pending: bool,
+
+	// visual feedback state (updated by tick_anim each frame)
+	shake_frames:    int,
+	shake_dx:        i32,
+	shake_dy:        i32,
 }
 
 // ---- tile helpers ----------------------------------------------------------

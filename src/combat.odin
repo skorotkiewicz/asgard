@@ -73,6 +73,12 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 	dmg  := max(1, attacker.power - defender.armor + roll)
 	defender.hp -= dmg
 
+	// visual feedback: defender flashes red; if WE landed the hit, screen shakes
+	defender.flash_frames = HIT_FLASH_FRAMES
+	if attacker == &g.player {
+		g.shake_frames = SHAKE_MAX_FRAMES
+	}
+
 	if attacker == &g.player {
 		log_msg(g, fmt.tprintf("You strike the %s (%d dmg).", defender.name, dmg))
 	} else if defender == &g.player {

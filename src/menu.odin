@@ -2,29 +2,53 @@ package asgard
 
 // In-game menu overlay. Toggled with Esc. While open it absorbs every
 // keystroke (movement, items, descent — all paused) so the game can't
-// advance behind it. The menu renders on top of everything else.
+// advance behind it. The menu has two screens: Main and Settings.
+// Esc backs out one level (Settings → Main → Closed).
 
 import rl "vendor:raylib"
 
-MenuAction :: enum {
-	Resume,
-	New_Game,
-	Exit,
+MenuScreen :: enum {
+	Main,
+	Settings,
 }
 
-MENU_ITEMS := [?]MenuAction{.Resume, .New_Game, .Exit}
+MenuAction :: enum {
+	Resume,
+	Settings,
+	New_Game,
+	Exit,
+	Toggle_Music,
+	Back,
+}
+
+MAIN_MENU_ITEMS     := [?]MenuAction{.Resume, .Settings, .New_Game, .Exit}
+SETTINGS_MENU_ITEMS := [?]MenuAction{.Toggle_Music, .Back}
 
 menu_label :: proc(a: MenuAction) -> cstring {
 	switch a {
-	case .Resume:   return "Resume"
-	case .New_Game: return "New Game"
-	case .Exit:     return "Exit"
+	case .Resume:       return "Resume"
+	case .Settings:     return "Settings"
+	case .New_Game:     return "New Game"
+	case .Exit:         return "Exit"
+	case .Toggle_Music:
+		if is_music_enabled() { return "Music:  ON" }
+		return "Music:  OFF"
+	case .Back:         return "Back"
 	}
 	return "?"
 }
 
+current_items :: proc(g: ^Game) -> []MenuAction {
+	switch g.menu_screen {
+	case .Main:     return MAIN_MENU_ITEMS[:]
+	case .Settings: return SETTINGS_MENU_ITEMS[:]
+	}
+	return MAIN_MENU_ITEMS[:]
+}
+
 menu_open :: proc(g: ^Game) {
 	g.menu_open      = true
+	g.menu_screen    = .Main
 	g.menu_selection = 0
 	cancel_hold() // drop any held movement key so we don't auto-walk on resume
 }
@@ -38,7 +62,8 @@ menu_close :: proc(g: ^Game) {
 menu_input :: proc(g: ^Game) -> bool {
 	if !g.menu_open { return false }
 
-	n := len(MENU_ITEMS)
+	items := current_items(g)
+	n := len(items)
 
 	if rl.IsKeyPressed(.UP) || rl.IsKeyPressed(.K) {
 		g.menu_selection -= 1
@@ -51,23 +76,44 @@ menu_input :: proc(g: ^Game) -> bool {
 		return true
 	}
 	if rl.IsKeyPressed(.ESCAPE) {
-		menu_close(g)
+		// Back out one level: Settings → Main, Main → closed.
+		switch g.menu_screen {
+		case .Settings:
+			g.menu_screen    = .Main
+			g.menu_selection = 0
+		case .Main:
+			menu_close(g)
+		}
 		return true
 	}
 	if rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE) {
-		switch MENU_ITEMS[g.menu_selection] {
-		case .Resume:
-			menu_close(g)
-		case .New_Game:
-			menu_close(g)
-			regenerate(g)
-		case .Exit:
-			g.quit = true
-		}
+		activate_menu_item(g, items[g.menu_selection])
 		return true
 	}
 
 	return true // everything else is swallowed while menu is open
+}
+
+@(private="file")
+activate_menu_item :: proc(g: ^Game, action: MenuAction) {
+	switch action {
+	case .Resume:
+		menu_close(g)
+	case .Settings:
+		g.menu_screen    = .Settings
+		g.menu_selection = 0
+	case .New_Game:
+		menu_close(g)
+		regenerate(g)
+	case .Exit:
+		g.quit = true
+	case .Toggle_Music:
+		set_music_enabled(!is_music_enabled())
+		// stay on Settings, keep selection on the toggle so the label flip is visible
+	case .Back:
+		g.menu_screen    = .Main
+		g.menu_selection = 0
+	}
 }
 
 draw_menu :: proc(g: ^Game) {
@@ -76,17 +122,22 @@ draw_menu :: proc(g: ^Game) {
 	// Dim the world behind the panel
 	rl.DrawRectangle(0, 0, WINDOW_W, WINDOW_H, {0, 0, 0, 170})
 
-	// Title
-	title : cstring = "ASGARD"
+	// Title varies by screen
+	title: cstring
+	switch g.menu_screen {
+	case .Main:     title = "ASGARD"
+	case .Settings: title = "SETTINGS"
+	}
 	tw := rl.MeasureText(title, 56)
 	rl.DrawText(title, (WINDOW_W - tw) / 2, WINDOW_H / 2 - 200, 56, PALETTE.player)
 
 	// Menu items, vertically centred around mid-screen
 	ITEM_SIZE    :: i32(32)
 	ITEM_SPACING :: i32(60)
-	start_y := WINDOW_H / 2 - i32(len(MENU_ITEMS)) * ITEM_SPACING / 2
+	items := current_items(g)
+	start_y := WINDOW_H / 2 - i32(len(items)) * ITEM_SPACING / 2
 
-	for action, i in MENU_ITEMS {
+	for action, i in items {
 		label := menu_label(action)
 		w := rl.MeasureText(label, ITEM_SIZE)
 		x := (WINDOW_W - w) / 2
@@ -101,8 +152,12 @@ draw_menu :: proc(g: ^Game) {
 		rl.DrawText(label, x, y, ITEM_SIZE, col)
 	}
 
-	// Hint
-	hint : cstring = "Up / Down  navigate    Enter  select    Esc  resume"
+	// Hint, varies by screen
+	hint: cstring
+	switch g.menu_screen {
+	case .Main:     hint = "Up / Down  navigate    Enter  select    Esc  resume"
+	case .Settings: hint = "Up / Down  navigate    Enter  toggle    Esc  back"
+	}
 	hw := rl.MeasureText(hint, 16)
 	rl.DrawText(hint, (WINDOW_W - hw) / 2, WINDOW_H - 80, 16, PALETTE.ui_dim)
 }

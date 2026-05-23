@@ -32,6 +32,23 @@ NoteEvent :: struct {
 @(private="file") current_realm:     Realm
 @(private="file") current_realm_set: bool
 
+// Session-only music toggle (defaults to on). Survives New Game so the
+// user's preference isn't wiped on restart.
+@(private="file") music_enabled:     bool = true
+
+is_music_enabled :: proc() -> bool { return music_enabled }
+
+set_music_enabled :: proc(on: bool) {
+	if music_enabled == on { return }
+	music_enabled = on
+	if !current_realm_set { return }
+	if on {
+		rl.PlayMusicStream(realm_musics[current_realm])
+	} else {
+		rl.StopMusicStream(realm_musics[current_realm])
+	}
+}
+
 music_init :: proc() {
 	for r in Realm {
 		realm_wav_bufs[r]     = build_realm_wav(r)
@@ -54,20 +71,23 @@ music_shutdown :: proc() {
 }
 
 // Switch to the music for `r`. No-op if already playing that realm's track.
+// Skips PlayMusicStream when the user has muted music in settings.
 play_realm_music :: proc(r: Realm) {
 	if current_realm_set && current_realm == r { return }
 	if current_realm_set {
 		rl.StopMusicStream(realm_musics[current_realm])
 	}
-	rl.PlayMusicStream(realm_musics[r])
 	current_realm     = r
 	current_realm_set = true
+	if music_enabled {
+		rl.PlayMusicStream(realm_musics[r])
+	}
 }
 
 // Must be called every frame from the main loop — raylib's music stream
 // fills its internal buffer on demand and goes silent without this tick.
 tick_music :: proc() {
-	if current_realm_set {
+	if current_realm_set && music_enabled {
 		rl.UpdateMusicStream(realm_musics[current_realm])
 	}
 }

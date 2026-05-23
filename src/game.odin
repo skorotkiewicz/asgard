@@ -97,6 +97,7 @@ Game :: struct {
 
 	// menu overlay state
 	menu_open:       bool,
+	menu_screen:     MenuScreen,
 	menu_selection:  int,
 
 	// visual feedback state (updated by tick_anim each frame)

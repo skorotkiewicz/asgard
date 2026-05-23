@@ -31,8 +31,9 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] Tile grid + walls + player movement
 - [x] Turn counter, message log
 - [x] Procedural map generation (rooms + corridors)
+- [x] First enemy + bump combat (draugr with greedy chase AI)
 - [ ] Field of view (shadowcasting)
-- [ ] Enemies + combat (draugr, jotnar, trolls)
+- [ ] More enemies (jotnar, trolls, Hel's hounds)
 - [ ] Items + inventory (runes, mead, weapons)
 - [ ] Stairs between the Nine Realms via Yggdrasil
 - [ ] Bosses (Fenrir, Jormungandr, Surtr, Hel)

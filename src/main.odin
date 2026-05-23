@@ -23,6 +23,9 @@ ROOM_MAX        :: 9
 MAX_ROOMS       :: 14
 PLACE_ATTEMPTS  :: 80
 
+AGGRO_RADIUS        :: 8
+DRAUGR_SPAWN_PCT    :: 55  // per non-starting room
+
 Tile :: enum u8 {
 	Floor,
 	Wall,
@@ -56,11 +59,16 @@ realm_name :: proc(r: Realm) -> string {
 	return "?"
 }
 
-Player :: struct {
-	x, y:    int,
-	hp:      int,
-	hp_max:  int,
-	name:    string,
+Entity :: struct {
+	x, y:        int,
+	glyph:       cstring,
+	name:        string,
+	color:       rl.Color,
+	hp:          int,
+	hp_max:      int,
+	power:       int,
+	armor:       int,
+	alive:       bool,
 }
 
 Room :: struct {
@@ -68,13 +76,15 @@ Room :: struct {
 }
 
 Game :: struct {
-	tiles:  [MAP_W * MAP_H]Tile,
-	player: Player,
-	realm:  Realm,
-	turn:   int,
-	seed:   u64,
-	log:    [dynamic]string,
-	quit:   bool,
+	tiles:   [MAP_W * MAP_H]Tile,
+	player:  Entity,
+	enemies: [dynamic]Entity,
+	realm:   Realm,
+	turn:    int,
+	seed:    u64,
+	log:     [dynamic]string,
+	dead:    bool,
+	quit:    bool,
 }
 
 LOG_LINES :: 6
@@ -96,6 +106,122 @@ log_msg :: proc(g: ^Game, msg: string) {
 	for len(g.log) > LOG_LINES {
 		delete(g.log[0])
 		ordered_remove(&g.log, 0)
+	}
+}
+
+// ---- entities & combat -----------------------------------------------------
+
+make_player :: proc() -> Entity {
+	return Entity{
+		glyph  = "@",
+		name   = "Wanderer",
+		color  = PALETTE.player,
+		hp     = 20,
+		hp_max = 20,
+		power  = 4,
+		armor  = 1,
+		alive  = true,
+	}
+}
+
+make_draugr :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph  = "d",
+		name   = "draugr",
+		color  = PALETTE.draugr,
+		hp     = 6,
+		hp_max = 6,
+		power  = 3,
+		armor  = 0,
+		alive  = true,
+	}
+}
+
+// Returns pointer to a live enemy at (x,y), or nil. Pointer is stable so long
+// as g.enemies isn't appended to between the lookup and use.
+enemy_at :: proc(g: ^Game, x, y: int) -> ^Entity {
+	for &e in g.enemies {
+		if e.alive && e.x == x && e.y == y { return &e }
+	}
+	return nil
+}
+
+is_walkable :: proc(g: ^Game, x, y: int) -> bool {
+	if tile_at(g, x, y) == .Wall { return false }
+	if enemy_at(g, x, y) != nil  { return false }
+	return true
+}
+
+sign :: proc(n: int) -> int {
+	if n > 0 { return 1 }
+	if n < 0 { return -1 }
+	return 0
+}
+
+abs_int :: proc(n: int) -> int {
+	if n < 0 { return -n }
+	return n
+}
+
+cheb_dist :: proc(ax, ay, bx, by: int) -> int {
+	return max(abs_int(ax - bx), abs_int(ay - by))
+}
+
+attack :: proc(g: ^Game, attacker, defender: ^Entity) {
+	roll := rand.int_max(3) - 1 // -1, 0, +1
+	dmg  := max(1, attacker.power - defender.armor + roll)
+	defender.hp -= dmg
+
+	if attacker == &g.player {
+		log_msg(g, fmt.tprintf("You strike the %s (%d dmg).", defender.name, dmg))
+	} else if defender == &g.player {
+		log_msg(g, fmt.tprintf("The %s lunges at you (%d dmg).", attacker.name, dmg))
+	} else {
+		log_msg(g, fmt.tprintf("%s hits %s (%d).", attacker.name, defender.name, dmg))
+	}
+
+	if defender.hp <= 0 {
+		defender.alive = false
+		if defender == &g.player {
+			log_msg(g, "You have fallen. The realm grows still.")
+			g.dead = true
+		} else {
+			log_msg(g, fmt.tprintf("The %s crumbles to dust.", defender.name))
+		}
+	}
+}
+
+enemy_turn :: proc(g: ^Game) {
+	for &e in g.enemies {
+		if !e.alive { continue }
+		dist := cheb_dist(e.x, e.y, g.player.x, g.player.y)
+		if dist > AGGRO_RADIUS { continue }
+
+		// adjacent → attack
+		if dist == 1 {
+			attack(g, &e, &g.player)
+			if g.dead { return }
+			continue
+		}
+
+		// greedy chase
+		dx := sign(g.player.x - e.x)
+		dy := sign(g.player.y - e.y)
+
+		if dx != 0 && dy != 0 && is_walkable(g, e.x + dx, e.y + dy) {
+			e.x += dx; e.y += dy
+			continue
+		}
+		if dx != 0 && is_walkable(g, e.x + dx, e.y) {
+			e.x += dx
+			continue
+		}
+		if dy != 0 && is_walkable(g, e.x, e.y + dy) {
+			e.y += dy
+			continue
+		}
+		// blocked: shuffle awkwardly (skip turn)
 	}
 }
 
@@ -192,6 +318,18 @@ generate_map :: proc(g: ^Game, seed: u64) {
 		g.player.y = MAP_H / 2
 		set_tile(g, g.player.x, g.player.y, .Floor)
 	}
+
+	// spawn draugr in non-starting rooms
+	clear(&g.enemies)
+	for i in 1 ..< len(rooms) {
+		if rand.int_max(100) >= DRAUGR_SPAWN_PCT { continue }
+		r := rooms[i]
+		ex := r.x + 1 + rand.int_max(max(1, r.w - 2))
+		ey := r.y + 1 + rand.int_max(max(1, r.h - 2))
+		// avoid landing on stairs
+		if tile_at(g, ex, ey) == .Stairs_Down { continue }
+		append(&g.enemies, make_draugr(ex, ey))
+	}
 }
 
 fresh_seed :: proc() -> u64 {
@@ -199,24 +337,23 @@ fresh_seed :: proc() -> u64 {
 }
 
 regenerate :: proc(g: ^Game) {
+	g.player = make_player()
+	g.dead   = false
+	g.turn   = 0
 	generate_map(g, fresh_seed())
-	g.turn = 0
 	log_msg(g, fmt.tprintf("The realm reshapes itself. (seed %d)", g.seed))
 }
 
 new_game :: proc(seed: u64) -> Game {
 	g := Game{}
-	g.realm  = .Midgard
-	g.turn   = 0
-	g.player = Player{
-		hp = 20,
-		hp_max = 20,
-		name = "Wanderer",
-	}
-	g.log = make([dynamic]string, 0, 32)
+	g.realm   = .Midgard
+	g.turn    = 0
+	g.player  = make_player()
+	g.enemies = make([dynamic]Entity, 0, 16)
+	g.log     = make([dynamic]string, 0, 32)
 	generate_map(&g, seed)
 	log_msg(&g, "You awaken in a stone chamber. Cold mist clings to the floor.")
-	log_msg(&g, "Somewhere, Yggdrasil's roots stir.")
+	log_msg(&g, "Somewhere, Yggdrasil's roots stir. Draugr stir with them.")
 	log_msg(&g, fmt.tprintf("(seed %d - press R to reshape the realm)", g.seed))
 	return g
 }
@@ -224,6 +361,7 @@ new_game :: proc(seed: u64) -> Game {
 destroy_game :: proc(g: ^Game) {
 	for s in g.log { delete(s) }
 	delete(g.log)
+	delete(g.enemies)
 }
 
 read_move :: proc() -> (dx: int, dy: int, acted: bool) {
@@ -250,6 +388,10 @@ try_step :: proc(g: ^Game, dx, dy: int) -> (took_turn: bool) {
 		log_msg(g, "A wall blocks your path.")
 		return false
 	}
+	if target := enemy_at(g, nx, ny); target != nil {
+		attack(g, &g.player, target)
+		return true
+	}
 	g.player.x = nx
 	g.player.y = ny
 	if tile_at(g, nx, ny) == .Stairs_Down {
@@ -267,10 +409,16 @@ handle_input :: proc(g: ^Game) {
 		regenerate(g)
 		return
 	}
+	if g.dead {
+		return // only R/Esc/Q respond when fallen
+	}
 	dx, dy, acted := read_move()
 	if !acted { return }
 	if try_step(g, dx, dy) {
 		g.turn += 1
+		if !g.dead {
+			enemy_turn(g)
+		}
 	}
 }
 
@@ -283,11 +431,13 @@ PALETTE := struct {
 	floor_dim: rl.Color,
 	stairs:    rl.Color,
 	player:    rl.Color,
+	draugr:    rl.Color,
 	ui_fg:     rl.Color,
 	ui_dim:    rl.Color,
 	ui_panel:  rl.Color,
 	hp_full:   rl.Color,
 	hp_low:    rl.Color,
+	dead_tint: rl.Color,
 }{
 	bg        = {12, 12, 18, 255},
 	wall      = {90, 80, 70, 255},
@@ -295,11 +445,13 @@ PALETTE := struct {
 	floor_dim = {35, 35, 45, 255},
 	stairs    = {120, 200, 220, 255},
 	player    = {240, 200, 80, 255},
+	draugr    = {150, 180, 130, 255},
 	ui_fg     = {220, 220, 210, 255},
 	ui_dim    = {130, 130, 140, 255},
 	ui_panel  = {22, 22, 30, 255},
 	hp_full   = {120, 200, 110, 255},
 	hp_low    = {200, 80, 70, 255},
+	dead_tint = {30, 0, 0, 180},
 }
 
 draw_glyph :: proc(ch: cstring, x, y, size: i32, col: rl.Color) {
@@ -329,11 +481,28 @@ draw_map :: proc(g: ^Game) {
 	}
 }
 
-draw_player :: proc(g: ^Game) {
+draw_entity :: proc(e: ^Entity) {
+	if !e.alive { return }
 	ox, oy := map_origin()
-	px := ox + i32(g.player.x) * TILE_PX
-	py := oy + i32(g.player.y) * TILE_PX
-	draw_glyph("@", px, py, TILE_PX, PALETTE.player)
+	px := ox + i32(e.x) * TILE_PX
+	py := oy + i32(e.y) * TILE_PX
+	draw_glyph(e.glyph, px, py, TILE_PX, e.color)
+}
+
+draw_entities :: proc(g: ^Game) {
+	for &e in g.enemies { draw_entity(&e) }
+	draw_entity(&g.player) // draw player on top
+}
+
+draw_game_over :: proc(g: ^Game) {
+	if !g.dead { return }
+	rl.DrawRectangle(0, 0, WINDOW_W, WINDOW_H, PALETTE.dead_tint)
+	msg : cstring = "YOU HAVE FALLEN"
+	hint: cstring = "press R to rise in a new realm  -  Esc to depart"
+	mw := rl.MeasureText(msg, 56)
+	hw := rl.MeasureText(hint, 20)
+	rl.DrawText(msg,  (WINDOW_W - mw) / 2, WINDOW_H / 2 - 60, 56, PALETTE.hp_low)
+	rl.DrawText(hint, (WINDOW_W - hw) / 2, WINDOW_H / 2 + 10, 20, PALETTE.ui_fg)
 }
 
 draw_top_bar :: proc(g: ^Game) {
@@ -370,7 +539,14 @@ draw_sidebar :: proc(g: ^Game) {
 		rl.DrawRectangle(bar_x, bar_y, fill, bar_h, hp_col)
 	}
 
-	hint_y := i32(UI_TOP_PX + 120)
+	alive_foes := 0
+	for &e in g.enemies { if e.alive { alive_foes += 1 } }
+	rl.DrawText(
+		fmt.ctprintf("Foes  %d", alive_foes),
+		x + 12, UI_TOP_PX + 92, 16, PALETTE.ui_fg,
+	)
+
+	hint_y := i32(UI_TOP_PX + 140)
 	rl.DrawText("Controls",            x + 12, hint_y,        16, PALETTE.ui_fg)
 	rl.DrawText("Arrows / h j k l",    x + 12, hint_y + 24,   14, PALETTE.ui_dim)
 	rl.DrawText("y u b n  diagonals",  x + 12, hint_y + 44,   14, PALETTE.ui_dim)
@@ -400,9 +576,10 @@ render :: proc(g: ^Game) {
 	rl.ClearBackground(PALETTE.bg)
 	draw_top_bar(g)
 	draw_map(g)
-	draw_player(g)
+	draw_entities(g)
 	draw_sidebar(g)
 	draw_log(g)
+	draw_game_over(g)
 	rl.EndDrawing()
 	free_all(context.temp_allocator)
 }

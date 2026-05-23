@@ -1,7 +1,9 @@
 package asgard
 
 import "core:fmt"
+import "core:math/rand"
 import "core:strings"
+import "core:time"
 import rl "vendor:raylib"
 
 WINDOW_W :: 1280
@@ -15,6 +17,11 @@ TILE_PX :: 20
 UI_TOP_PX :: 40
 UI_BOT_PX :: 160
 UI_RIGHT_PX :: 240
+
+ROOM_MIN        :: 4
+ROOM_MAX        :: 9
+MAX_ROOMS       :: 14
+PLACE_ATTEMPTS  :: 80
 
 Tile :: enum u8 {
 	Floor,
@@ -56,11 +63,16 @@ Player :: struct {
 	name:    string,
 }
 
+Room :: struct {
+	x, y, w, h: int,
+}
+
 Game :: struct {
 	tiles:  [MAP_W * MAP_H]Tile,
 	player: Player,
 	realm:  Realm,
 	turn:   int,
+	seed:   u64,
 	log:    [dynamic]string,
 	quit:   bool,
 }
@@ -87,43 +99,125 @@ log_msg :: proc(g: ^Game, msg: string) {
 	}
 }
 
-init_map :: proc(g: ^Game) {
-	for y in 0 ..< MAP_H {
-		for x in 0 ..< MAP_W {
-			if x == 0 || y == 0 || x == MAP_W - 1 || y == MAP_H - 1 {
-				set_tile(g, x, y, .Wall)
-			} else {
-				set_tile(g, x, y, .Floor)
-			}
-		}
-	}
+// ---- map generation --------------------------------------------------------
 
-	// A few inner walls for shape — to be replaced by procgen later.
-	for x in 14 ..= 24 { set_tile(g, x, 8, .Wall) }
-	for y in 8 ..= 14  { set_tile(g, 24, y, .Wall) }
-	for x in 34 ..= 44 { set_tile(g, x, 16, .Wall) }
-	set_tile(g, 19, 8, .Floor)  // doorway
-	set_tile(g, 24, 11, .Floor) // doorway
-	set_tile(g, 39, 16, .Floor) // doorway
-
-	set_tile(g, MAP_W - 3, MAP_H - 3, .Stairs_Down)
+room_center :: proc(r: Room) -> (int, int) {
+	return r.x + r.w / 2, r.y + r.h / 2
 }
 
-new_game :: proc() -> Game {
+rooms_overlap :: proc(a, b: Room) -> bool {
+	return a.x <= b.x + b.w &&
+	       a.x + a.w >= b.x &&
+	       a.y <= b.y + b.h &&
+	       a.y + a.h >= b.y
+}
+
+carve_room :: proc(g: ^Game, r: Room) {
+	for y in r.y ..< r.y + r.h {
+		for x in r.x ..< r.x + r.w {
+			set_tile(g, x, y, .Floor)
+		}
+	}
+}
+
+carve_h_corridor :: proc(g: ^Game, x1, x2, y: int) {
+	a, b := min(x1, x2), max(x1, x2)
+	for x in a ..= b { set_tile(g, x, y, .Floor) }
+}
+
+carve_v_corridor :: proc(g: ^Game, y1, y2, x: int) {
+	a, b := min(y1, y2), max(y1, y2)
+	for y in a ..= b { set_tile(g, x, y, .Floor) }
+}
+
+rand_in_range :: proc(lo, hi: int) -> int {
+	// inclusive [lo, hi]
+	return lo + rand.int_max(hi - lo + 1)
+}
+
+generate_map :: proc(g: ^Game, seed: u64) {
+	rand.reset(seed)
+	g.seed = seed
+
+	// start filled with walls
+	for i in 0 ..< len(g.tiles) { g.tiles[i] = .Wall }
+
+	rooms := make([dynamic]Room, 0, MAX_ROOMS)
+	defer delete(rooms)
+
+	for _ in 0 ..< PLACE_ATTEMPTS {
+		if len(rooms) >= MAX_ROOMS { break }
+
+		w := rand_in_range(ROOM_MIN, ROOM_MAX)
+		h := rand_in_range(ROOM_MIN, ROOM_MAX)
+		x := rand_in_range(1, MAP_W - w - 2)
+		y := rand_in_range(1, MAP_H - h - 2)
+		candidate := Room{x, y, w, h}
+
+		// require a 1-tile gap from any existing room
+		padded := Room{x - 1, y - 1, w + 2, h + 2}
+		clash := false
+		for r in rooms {
+			if rooms_overlap(padded, r) { clash = true; break }
+		}
+		if clash { continue }
+
+		carve_room(g, candidate)
+
+		if len(rooms) > 0 {
+			cx1, cy1 := room_center(rooms[len(rooms) - 1])
+			cx2, cy2 := room_center(candidate)
+			if rand.int_max(2) == 0 {
+				carve_h_corridor(g, cx1, cx2, cy1)
+				carve_v_corridor(g, cy1, cy2, cx2)
+			} else {
+				carve_v_corridor(g, cy1, cy2, cx1)
+				carve_h_corridor(g, cx1, cx2, cy2)
+			}
+		}
+
+		append(&rooms, candidate)
+	}
+
+	if len(rooms) > 0 {
+		px, py := room_center(rooms[0])
+		g.player.x = px
+		g.player.y = py
+
+		sx, sy := room_center(rooms[len(rooms) - 1])
+		set_tile(g, sx, sy, .Stairs_Down)
+	} else {
+		// extremely unlikely; fall back to center
+		g.player.x = MAP_W / 2
+		g.player.y = MAP_H / 2
+		set_tile(g, g.player.x, g.player.y, .Floor)
+	}
+}
+
+fresh_seed :: proc() -> u64 {
+	return u64(time.now()._nsec)
+}
+
+regenerate :: proc(g: ^Game) {
+	generate_map(g, fresh_seed())
+	g.turn = 0
+	log_msg(g, fmt.tprintf("The realm reshapes itself. (seed %d)", g.seed))
+}
+
+new_game :: proc(seed: u64) -> Game {
 	g := Game{}
-	g.realm   = .Midgard
-	g.turn    = 0
-	g.player  = Player{
-		x = MAP_W / 4,
-		y = MAP_H / 2,
+	g.realm  = .Midgard
+	g.turn   = 0
+	g.player = Player{
 		hp = 20,
 		hp_max = 20,
 		name = "Wanderer",
 	}
 	g.log = make([dynamic]string, 0, 32)
-	init_map(&g)
+	generate_map(&g, seed)
 	log_msg(&g, "You awaken in a stone chamber. Cold mist clings to the floor.")
 	log_msg(&g, "Somewhere, Yggdrasil's roots stir.")
+	log_msg(&g, fmt.tprintf("(seed %d - press R to reshape the realm)", g.seed))
 	return g
 }
 
@@ -167,6 +261,10 @@ try_step :: proc(g: ^Game, dx, dy: int) -> (took_turn: bool) {
 handle_input :: proc(g: ^Game) {
 	if rl.IsKeyPressed(.ESCAPE) || rl.IsKeyPressed(.Q) {
 		g.quit = true
+		return
+	}
+	if rl.IsKeyPressed(.R) {
+		regenerate(g)
 		return
 	}
 	dx, dy, acted := read_move()
@@ -242,6 +340,8 @@ draw_top_bar :: proc(g: ^Game) {
 	rl.DrawRectangle(0, 0, WINDOW_W, UI_TOP_PX - 4, PALETTE.ui_panel)
 	title := fmt.ctprintf("ASGARD  -  %s  -  Turn %d", realm_name(g.realm), g.turn)
 	rl.DrawText(title, 12, 10, 22, PALETTE.ui_fg)
+	seed_label := fmt.ctprintf("seed %d", g.seed)
+	rl.DrawText(seed_label, WINDOW_W - UI_RIGHT_PX + 12, 14, 16, PALETTE.ui_dim)
 }
 
 draw_sidebar :: proc(g: ^Game) {
@@ -271,11 +371,12 @@ draw_sidebar :: proc(g: ^Game) {
 	}
 
 	hint_y := i32(UI_TOP_PX + 120)
-	rl.DrawText("Controls",            x + 12, hint_y,       16, PALETTE.ui_fg)
-	rl.DrawText("Arrows / h j k l",    x + 12, hint_y + 24,  14, PALETTE.ui_dim)
-	rl.DrawText("y u b n  diagonals",  x + 12, hint_y + 44,  14, PALETTE.ui_dim)
-	rl.DrawText(".  wait",             x + 12, hint_y + 64,  14, PALETTE.ui_dim)
-	rl.DrawText("Esc / q  quit",       x + 12, hint_y + 84,  14, PALETTE.ui_dim)
+	rl.DrawText("Controls",            x + 12, hint_y,        16, PALETTE.ui_fg)
+	rl.DrawText("Arrows / h j k l",    x + 12, hint_y + 24,   14, PALETTE.ui_dim)
+	rl.DrawText("y u b n  diagonals",  x + 12, hint_y + 44,   14, PALETTE.ui_dim)
+	rl.DrawText(".  wait",             x + 12, hint_y + 64,   14, PALETTE.ui_dim)
+	rl.DrawText("R  reshape realm",    x + 12, hint_y + 84,   14, PALETTE.ui_dim)
+	rl.DrawText("Esc / q  quit",       x + 12, hint_y + 104,  14, PALETTE.ui_dim)
 }
 
 draw_log :: proc(g: ^Game) {
@@ -313,7 +414,7 @@ main :: proc() {
 	rl.SetTargetFPS(60)
 	rl.SetExitKey(.KEY_NULL) // we handle quit ourselves
 
-	g := new_game()
+	g := new_game(fresh_seed())
 	defer destroy_game(&g)
 
 	for !rl.WindowShouldClose() && !g.quit {

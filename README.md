@@ -18,18 +18,19 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 
 ## Controls
 
-| Key                       | Action          |
-|---------------------------|-----------------|
-| Arrows / `h j k l`        | Move one tile   |
-| `y u b n`                 | Diagonal move   |
-| `.`                       | Wait one turn   |
-| `Esc` / `q`               | Quit            |
+| Key                       | Action                       |
+|---------------------------|------------------------------|
+| Arrows / `h j k l`        | Move one tile                |
+| `y u b n`                 | Diagonal move                |
+| `.`                       | Wait one turn                |
+| `R`                       | Regenerate the map (new seed)|
+| `Esc` / `q`               | Quit                         |
 
 ## Roadmap
 
 - [x] Tile grid + walls + player movement
 - [x] Turn counter, message log
-- [ ] Procedural map generation (rooms + corridors)
+- [x] Procedural map generation (rooms + corridors)
 - [ ] Field of view (shadowcasting)
 - [ ] Enemies + combat (draugr, jotnar, trolls)
 - [ ] Items + inventory (runes, mead, weapons)

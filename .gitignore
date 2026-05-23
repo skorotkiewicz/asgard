@@ -1,0 +1,10 @@
+asgard
+asgard.bin
+*.o
+*.obj
+*.exe
+*.pdb
+*.dSYM/
+build/
+.DS_Store
+.vscode/

@@ -19,6 +19,8 @@ TAU               :: f32(6.283185307179586)
 SoundKind :: enum {
 	Player_Strike,  // your weapon connecting (any target)
 	Draugr_Strike,  // a draugr's rasping attack
+	Jotunn_Strike,  // a frost giant's heavy boom
+	Hound_Strike,   // a hound's sharp bite/snap
 	Pickup,         // item picked up
 	Use_Item,       // any pack slot consumed
 	Descend,        // stepped through the World Tree
@@ -31,6 +33,8 @@ audio_init :: proc() {
 	rl.InitAudioDevice()
 	sounds[.Player_Strike] = make_sound(0.12, gen_player_strike)
 	sounds[.Draugr_Strike] = make_sound(0.25, gen_draugr_strike)
+	sounds[.Jotunn_Strike] = make_sound(0.30, gen_jotunn_strike)
+	sounds[.Hound_Strike]  = make_sound(0.08, gen_hound_strike)
 	sounds[.Pickup]        = make_sound(0.12, gen_pickup)
 	sounds[.Use_Item]      = make_sound(0.20, gen_use_item)
 	sounds[.Descend]       = make_sound(0.40, gen_descend)
@@ -110,6 +114,37 @@ gen_player_strike :: proc(t: f32) -> f32 {
 	noise     := (rand.float32() * 2 - 1) * noise_env * 0.45
 
 	return body + noise
+}
+
+// Jotunn's boom: very low pitch-swept sine, slower decay than the kick. Same
+// kick-drum synthesis recipe as the player strike but tuned for sub-bass and
+// a long tail — reads as a heavy "DOOM" rather than a snap.
+@(private="file")
+gen_jotunn_strike :: proc(t: f32) -> f32 {
+	F_BASE     :: f32(45.0)
+	F_SWING    :: f32(220.0)
+	PITCH_RATE :: f32(35.0)
+
+	pitch_factor := math.exp(-t * PITCH_RATE)
+	phase        := TAU * (F_BASE * t + (F_SWING / PITCH_RATE) * (1 - pitch_factor))
+
+	amp_env := math.exp(-t * 14) // long tail
+	return math.sin(phase) * amp_env * 0.9
+}
+
+// Hound's bite: sharp noise click + brief high tone. Very short (~60ms) —
+// reads as a snap or quick chomp rather than any sustained sound.
+@(private="file")
+gen_hound_strike :: proc(t: f32) -> f32 {
+	if t > 0.06 { return 0 }
+
+	click_env := math.exp(-t * 220)
+	click     := (rand.float32() * 2 - 1) * click_env * 0.6
+
+	ring_env  := math.exp(-t * 60)
+	ring      := math.sin(t * 900 * TAU) * ring_env * 0.4
+
+	return click + ring
 }
 
 // Draugr's hiss: sustained high-passed noise with an attack-sustain-release

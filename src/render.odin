@@ -27,6 +27,8 @@ PALETTE := struct {
 	stairs:    rl.Color,
 	player:    rl.Color,
 	draugr:    rl.Color,
+	jotunn:    rl.Color,
+	hound:     rl.Color,
 	ui_fg:     rl.Color,
 	ui_dim:    rl.Color,
 	ui_panel:  rl.Color,
@@ -41,6 +43,8 @@ PALETTE := struct {
 	stairs    = {120, 200, 220, 255},
 	player    = {240, 200, 80, 255},
 	draugr    = {150, 180, 130, 255},
+	jotunn    = {180, 200, 220, 255}, // pale icy blue
+	hound     = {200,  70,  60, 255}, // dark red
 	ui_fg     = {220, 220, 210, 255},
 	ui_dim    = {130, 130, 140, 255},
 	ui_panel  = {22, 22, 30, 255},

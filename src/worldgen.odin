@@ -7,7 +7,63 @@ ROOM_MIN         :: 4
 ROOM_MAX         :: 9
 MAX_ROOMS        :: 14
 PLACE_ATTEMPTS   :: 80
-DRAUGR_SPAWN_PCT :: 55 // per non-starting room
+ENEMY_SPAWN_PCT  :: 55 // per non-starting room
+
+// Weighted spawn tables per realm. Weight 0 means that kind never appears
+// in this realm. Tuned so each realm has its own enemy character without
+// being completely homogeneous.
+realm_spawn_weights :: proc(r: Realm) -> [EnemyKind]int {
+	switch r {
+	case .Midgard:      return {.Draugr = 10, .Jotunn = 0, .Hound = 0} // intro: draugr only
+	case .Asgard:       return {.Draugr =  7, .Jotunn = 2, .Hound = 1}
+	case .Jotunheim:    return {.Draugr =  3, .Jotunn = 6, .Hound = 1} // giants' country
+	case .Niflheim:     return {.Draugr =  4, .Jotunn = 3, .Hound = 3} // mixed mist
+	case .Muspelheim:   return {.Draugr =  2, .Jotunn = 2, .Hound = 6} // fire hounds
+	case .Alfheim:      return {.Draugr =  8, .Jotunn = 1, .Hound = 1} // lighter realm
+	case .Svartalfheim: return {.Draugr =  4, .Jotunn = 5, .Hound = 1} // dark deep
+	case .Vanaheim:     return {.Draugr =  4, .Jotunn = 3, .Hound = 3}
+	case .Helheim:      return {.Draugr =  2, .Jotunn = 3, .Hound = 5} // Hel's hounds
+	}
+	return {.Draugr = 10, .Jotunn = 0, .Hound = 0}
+}
+
+pick_enemy_kind :: proc(weights: [EnemyKind]int) -> EnemyKind {
+	total := 0
+	for w in weights { total += w }
+	if total <= 0 { return .Draugr }
+	roll := rand.int_max(total)
+	sum := 0
+	for w, k in weights {
+		sum += w
+		if roll < sum { return k }
+	}
+	return .Draugr
+}
+
+// True if (x,y) is free for spawning a new enemy or item: walkable tile,
+// not stairs, no existing enemy or item there.
+spawnable :: proc(g: ^Game, x, y: int) -> bool {
+	t := tile_at(g, x, y)
+	if t == .Wall                  { return false }
+	if t == .Stairs_Down           { return false }
+	if enemy_at(g, x, y) != nil    { return false }
+	if item_at(g, x, y) >= 0       { return false }
+	return true
+}
+
+// Try to place a packmate of `kind` on any adjacent walkable tile.
+try_spawn_packmate :: proc(g: ^Game, x, y: int, kind: EnemyKind) {
+	for dx in -1 ..= 1 {
+		for dy in -1 ..= 1 {
+			if dx == 0 && dy == 0 { continue }
+			nx := x + dx
+			ny := y + dy
+			if !spawnable(g, nx, ny) { continue }
+			append(&g.enemies, make_enemy(kind, nx, ny))
+			return
+		}
+	}
+}
 
 // ---- seed ------------------------------------------------------------------
 
@@ -115,16 +171,21 @@ generate_map :: proc(g: ^Game, seed: u64) {
 		set_tile(g, g.player.x, g.player.y, .Floor)
 	}
 
-	// spawn draugr in non-starting rooms
+	// spawn enemies in non-starting rooms using the realm's spawn weights
 	clear(&g.enemies)
+	weights := realm_spawn_weights(g.realm)
 	for i in 1 ..< len(rooms) {
-		if rand.int_max(100) >= DRAUGR_SPAWN_PCT { continue }
+		if rand.int_max(100) >= ENEMY_SPAWN_PCT { continue }
 		r := rooms[i]
 		ex := r.x + 1 + rand.int_max(max(1, r.w - 2))
 		ey := r.y + 1 + rand.int_max(max(1, r.h - 2))
-		// avoid landing on stairs
-		if tile_at(g, ex, ey) == .Stairs_Down { continue }
-		append(&g.enemies, make_draugr(ex, ey))
+		if !spawnable(g, ex, ey) { continue }
+		kind := pick_enemy_kind(weights)
+		append(&g.enemies, make_enemy(kind, ex, ey))
+		// Hounds run in packs — try to place a companion adjacent.
+		if kind == .Hound {
+			try_spawn_packmate(g, ex, ey, .Hound)
+		}
 	}
 
 	// scatter items in non-starting rooms (avoid stairs, avoid enemies)

@@ -61,17 +61,23 @@ realm_flavor :: proc(r: Realm) -> string {
 }
 
 Entity :: struct {
-	x, y:         int,
-	glyph:        cstring,
-	name:         string,
-	color:        rl.Color,
-	hp:           int,
-	hp_max:       int,
-	power:        int,
-	armor:        int,
-	alive:        bool,
-	flash_frames: int,       // counts down each frame; > 0 = render with hit-flash color
-	attack_sound: SoundKind, // played when THIS entity lands a hit
+	x, y:          int,
+	glyph:         cstring,
+	name:          string,
+	color:         rl.Color,
+	hp:            int,
+	hp_max:        int,
+	power:         int,
+	armor:         int,
+	alive:         bool,
+	flash_frames:  int,       // counts down each frame; > 0 = render with hit-flash color
+	attack_sound:  SoundKind, // played when THIS entity lands a hit
+	// Speed-class modifiers (both default 0 = normal). Slow enemies set
+	// cooldown_max > 0 to skip turns; fast enemies set extra_actions > 0
+	// to take additional actions per turn.
+	cooldown:      int,
+	cooldown_max:  int,
+	extra_actions: int,
 }
 
 Room :: struct {

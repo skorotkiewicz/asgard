@@ -34,6 +34,57 @@ make_draugr :: proc(x, y: int) -> Entity {
 	}
 }
 
+// Jotunn — slow, heavy. Skips every other turn (cooldown_max=1) but hits
+// hard and has armor. Player can kite them.
+make_jotunn :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "J",
+		name          = "jotunn",
+		color         = PALETTE.jotunn,
+		hp            = 10,
+		hp_max        = 10,
+		power         = 4,
+		armor         = 2,
+		alive         = true,
+		attack_sound  = .Jotunn_Strike,
+		cooldown_max  = 1,
+	}
+}
+
+// Hound of Hel — fast, fragile. Takes two actions per turn (move + attack,
+// or attack twice) so they close distance fast despite low HP. Spawn in pairs.
+make_hound :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "h",
+		name          = "hound",
+		color         = PALETTE.hound,
+		hp            = 3,
+		hp_max        = 3,
+		power         = 2,
+		armor         = 0,
+		alive         = true,
+		attack_sound  = .Hound_Strike,
+		extra_actions = 1,
+	}
+}
+
+EnemyKind :: enum {
+	Draugr,
+	Jotunn,
+	Hound,
+}
+
+make_enemy :: proc(kind: EnemyKind, x, y: int) -> Entity {
+	switch kind {
+	case .Draugr: return make_draugr(x, y)
+	case .Jotunn: return make_jotunn(x, y)
+	case .Hound:  return make_hound(x, y)
+	}
+	return make_draugr(x, y)
+}
+
 // ---- queries ---------------------------------------------------------------
 
 // Returns pointer to a live enemy at (x,y), or nil. Pointer is stable so long
@@ -103,37 +154,56 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 
 // ---- AI --------------------------------------------------------------------
 
+// One "tick" of enemy behaviour: attack player if adjacent, else greedy chase.
+take_one_action :: proc(g: ^Game, e: ^Entity) {
+	dist := cheb_dist(e.x, e.y, g.player.x, g.player.y)
+
+	if dist == 1 {
+		attack(g, e, &g.player)
+		return
+	}
+
+	dx := sign(g.player.x - e.x)
+	dy := sign(g.player.y - e.y)
+
+	if dx != 0 && dy != 0 && is_walkable(g, e.x + dx, e.y + dy) {
+		e.x += dx; e.y += dy
+		return
+	}
+	if dx != 0 && is_walkable(g, e.x + dx, e.y) {
+		e.x += dx
+		return
+	}
+	if dy != 0 && is_walkable(g, e.x, e.y + dy) {
+		e.y += dy
+		return
+	}
+	// blocked: shuffle awkwardly (skip)
+}
+
 enemy_turn :: proc(g: ^Game) {
 	for &e in g.enemies {
 		if !e.alive { continue }
 		// only act if currently in the player's line of sight
 		if !g.visible[e.y * MAP_W + e.x] { continue }
 
-		dist := cheb_dist(e.x, e.y, g.player.x, g.player.y)
+		// Slow enemies skip turns via cooldown
+		if e.cooldown > 0 {
+			e.cooldown -= 1
+			continue
+		}
 
-		// adjacent → attack
-		if dist == 1 {
-			attack(g, &e, &g.player)
+		take_one_action(g, &e)
+		if g.dead { return }
+
+		// Fast enemies take additional actions per turn
+		for _ in 0 ..< e.extra_actions {
+			take_one_action(g, &e)
 			if g.dead { return }
-			continue
 		}
 
-		// greedy chase
-		dx := sign(g.player.x - e.x)
-		dy := sign(g.player.y - e.y)
-
-		if dx != 0 && dy != 0 && is_walkable(g, e.x + dx, e.y + dy) {
-			e.x += dx; e.y += dy
-			continue
+		if e.cooldown_max > 0 {
+			e.cooldown = e.cooldown_max
 		}
-		if dx != 0 && is_walkable(g, e.x + dx, e.y) {
-			e.x += dx
-			continue
-		}
-		if dy != 0 && is_walkable(g, e.x, e.y + dy) {
-			e.y += dy
-			continue
-		}
-		// blocked: shuffle awkwardly (skip turn)
 	}
 }

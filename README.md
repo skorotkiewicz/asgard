@@ -4,7 +4,7 @@ A turn-based roguelike set across the Nine Realms of Norse mythology, written in
 
 ## Status
 
-Early prototype. Currently: procedurally generated dungeons across all Nine Realms via Yggdrasil descent, each with its own palette and flavor; draugr ambush from the shadows; field-of-view-limited vision with explored memory; mead, runes of fire, and runes of sight scattered across the world; pack (6 slots) persists between realms.
+Early prototype. Currently: procedurally generated dungeons across all Nine Realms via Yggdrasil descent, each with its own palette, music, and enemy mix; draugr, jotnar (slow tanks), and hounds (fast packs) hunt you depending on realm; field-of-view-limited vision with explored memory; mead, runes of fire, and runes of sight scattered across the world; pack (6 slots) persists between realms.
 
 ## Source layout
 
@@ -55,7 +55,8 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] Items + inventory (mead heals; rune of fire burns visible foes; rune of sight reveals map)
 - [x] Hit flash + screen shake + procedurally-synthesized SFX
 - [x] Per-realm background music (looping drones with realm-specific tonality)
-- [ ] More enemies (jotnar, trolls, Hel's hounds) — tougher in deeper realms
+- [x] More enemies — jotnar (slow tanks) and Hel's hounds (fast packs) with realm-weighted spawn tables
+- [ ] Even more enemies (trolls, wraiths)
 - [ ] More item kinds (weapons, armor, throwing axes, scrolls of recall)
 - [ ] Bosses (Fenrir, Jormungandr, Surtr, Hel)
 - [ ] Saving / loading

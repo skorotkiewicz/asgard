@@ -18,6 +18,7 @@ All files are in the same `asgard` package, so cross-file references are free.
 | `src/combat.odin` | Entity factories, combat math, enemy AI                |
 | `src/fov.odin`    | Recursive shadowcasting field of view                  |
 | `src/items.odin`  | Item kinds, pickup, use effects                        |
+| `src/menu.odin`   | Esc-opened pause menu                                  |
 | `src/audio.odin`  | Procedurally-synthesized SFX (no asset files)          |
 | `src/music.odin`  | Per-realm looping drone music, also synthesized        |
 | `src/render.odin` | Palette and all raylib drawing                         |
@@ -41,7 +42,7 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 | `.`                       | Wait one turn                |
 | `1`–`6`                   | Use that pack slot           |
 | `R`                       | Restart from Midgard (full HP, empty pack) |
-| `Esc` / `q`               | Quit                         |
+| `Esc`                     | Open menu (Resume / New Game / Exit) |
 
 ## Roadmap
 

@@ -237,7 +237,7 @@ draw_sidebar :: proc(g: ^Game) {
 	rl.DrawText(".  wait",             x + 12, hint_y + 64,   14, PALETTE.ui_dim)
 	rl.DrawText("1-6  use pack slot",  x + 12, hint_y + 84,   14, PALETTE.ui_dim)
 	rl.DrawText("R  reshape realm",    x + 12, hint_y + 104,  14, PALETTE.ui_dim)
-	rl.DrawText("Esc / q  quit",       x + 12, hint_y + 124,  14, PALETTE.ui_dim)
+	rl.DrawText("Esc  menu",           x + 12, hint_y + 124,  14, PALETTE.ui_dim)
 }
 
 draw_log :: proc(g: ^Game) {
@@ -260,7 +260,7 @@ draw_game_over :: proc(g: ^Game) {
 	if !g.dead { return }
 	rl.DrawRectangle(0, 0, WINDOW_W, WINDOW_H, PALETTE.dead_tint)
 	msg : cstring = "YOU HAVE FALLEN"
-	hint: cstring = "press R to rise in a new realm  -  Esc to depart"
+	hint: cstring = "press R to rise in a new realm  -  Esc for menu"
 	mw := rl.MeasureText(msg, 56)
 	hw := rl.MeasureText(hint, 20)
 	rl.DrawText(msg,  (WINDOW_W - mw) / 2, WINDOW_H / 2 - 60, 56, PALETTE.hp_low)
@@ -279,6 +279,7 @@ render :: proc(g: ^Game) {
 	draw_sidebar(g)
 	draw_log(g)
 	draw_game_over(g)
+	draw_menu(g)
 	rl.EndDrawing()
 	free_all(context.temp_allocator)
 }

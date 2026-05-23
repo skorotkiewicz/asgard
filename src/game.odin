@@ -95,6 +95,10 @@ Game :: struct {
 	quit:            bool,
 	descend_pending: bool,
 
+	// menu overlay state
+	menu_open:       bool,
+	menu_selection:  int,
+
 	// visual feedback state (updated by tick_anim each frame)
 	shake_frames:    int,
 	shake_dx:        i32,
@@ -284,8 +288,12 @@ try_step :: proc(g: ^Game, dx, dy: int) -> (took_turn: bool) {
 }
 
 handle_input :: proc(g: ^Game) {
-	if rl.IsKeyPressed(.ESCAPE) || rl.IsKeyPressed(.Q) {
-		g.quit = true
+	// Menu absorbs every keystroke while open
+	if menu_input(g) {
+		return
+	}
+	if rl.IsKeyPressed(.ESCAPE) {
+		menu_open(g)
 		return
 	}
 	if rl.IsKeyPressed(.R) {
@@ -293,7 +301,7 @@ handle_input :: proc(g: ^Game) {
 		return
 	}
 	if g.dead {
-		return // only R/Esc/Q respond when fallen
+		return // only Esc (menu) and R respond when fallen
 	}
 
 	if slot := read_item_slot(); slot >= 0 {

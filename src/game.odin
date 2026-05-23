@@ -187,16 +187,68 @@ descend :: proc(g: ^Game) {
 
 // ---- input / turn loop -----------------------------------------------------
 
+// ---- hold-to-repeat movement -----------------------------------------------
+
+HOLD_INITIAL_DELAY :: f64(0.20) // seconds before auto-repeat kicks in
+HOLD_REPEAT_PERIOD :: f64(0.08) // seconds between auto-repeats
+
+@(private="file")
+move_hold: struct {
+	key:     rl.KeyboardKey,
+	dx, dy:  int,
+	first_t: f64,
+	last_t:  f64,
+}
+
+@(private="file")
+start_hold :: proc(key: rl.KeyboardKey, dx, dy: int) -> (int, int, bool) {
+	now := rl.GetTime()
+	move_hold.key     = key
+	move_hold.dx      = dx
+	move_hold.dy      = dy
+	move_hold.first_t = now
+	move_hold.last_t  = now
+	return dx, dy, true
+}
+
+// Called by handle_input when a move fails (wall bump) so the player doesn't
+// auto-spam the same blocked direction.
+cancel_hold :: proc() {
+	move_hold.key = .KEY_NULL
+}
+
 read_move :: proc() -> (dx: int, dy: int, acted: bool) {
-	if rl.IsKeyPressed(.LEFT)  || rl.IsKeyPressed(.H) { return -1,  0, true }
-	if rl.IsKeyPressed(.RIGHT) || rl.IsKeyPressed(.L) { return  1,  0, true }
-	if rl.IsKeyPressed(.UP)    || rl.IsKeyPressed(.K) { return  0, -1, true }
-	if rl.IsKeyPressed(.DOWN)  || rl.IsKeyPressed(.J) { return  0,  1, true }
-	if rl.IsKeyPressed(.Y) { return -1, -1, true }
-	if rl.IsKeyPressed(.U) { return  1, -1, true }
-	if rl.IsKeyPressed(.B) { return -1,  1, true }
-	if rl.IsKeyPressed(.N) { return  1,  1, true }
-	if rl.IsKeyPressed(.PERIOD) { return 0, 0, true } // wait
+	// Initial press: each binding checked individually so we know exactly
+	// which key to track for the held-down check below.
+	if rl.IsKeyPressed(.LEFT)  { return start_hold(.LEFT,  -1,  0) }
+	if rl.IsKeyPressed(.H)     { return start_hold(.H,     -1,  0) }
+	if rl.IsKeyPressed(.RIGHT) { return start_hold(.RIGHT,  1,  0) }
+	if rl.IsKeyPressed(.L)     { return start_hold(.L,      1,  0) }
+	if rl.IsKeyPressed(.UP)    { return start_hold(.UP,     0, -1) }
+	if rl.IsKeyPressed(.K)     { return start_hold(.K,      0, -1) }
+	if rl.IsKeyPressed(.DOWN)  { return start_hold(.DOWN,   0,  1) }
+	if rl.IsKeyPressed(.J)     { return start_hold(.J,      0,  1) }
+	if rl.IsKeyPressed(.Y)     { return start_hold(.Y,     -1, -1) }
+	if rl.IsKeyPressed(.U)     { return start_hold(.U,      1, -1) }
+	if rl.IsKeyPressed(.B)     { return start_hold(.B,     -1,  1) }
+	if rl.IsKeyPressed(.N)     { return start_hold(.N,      1,  1) }
+
+	if rl.IsKeyPressed(.PERIOD) { return 0, 0, true } // wait — no auto-repeat
+
+	// Hold-repeat for the currently tracked key
+	if move_hold.key != .KEY_NULL {
+		if rl.IsKeyDown(move_hold.key) {
+			now := rl.GetTime()
+			if (now - move_hold.first_t) >= HOLD_INITIAL_DELAY &&
+			   (now - move_hold.last_t)  >= HOLD_REPEAT_PERIOD {
+				move_hold.last_t = now
+				return move_hold.dx, move_hold.dy, true
+			}
+		} else {
+			move_hold.key = .KEY_NULL // released; stop tracking
+		}
+	}
+
 	return 0, 0, false
 }
 
@@ -262,6 +314,9 @@ handle_input :: proc(g: ^Game) {
 		if g.descend_pending && !g.dead {
 			descend(g)
 		}
+	} else {
+		// blocked (wall bump): break the hold so we don't spam the saga log
+		cancel_hold()
 	}
 }
 

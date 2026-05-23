@@ -81,6 +81,7 @@ pickup_item :: proc(g: ^Game, idx: int) {
 	}
 	append(&g.inventory, kind)
 	unordered_remove(&g.items, idx)
+	play_sound(.Pickup)
 	log_msg(g, fmt.tprintf("You pick up the %s.", item_name(kind)))
 }
 
@@ -123,5 +124,6 @@ use_item :: proc(g: ^Game, slot: int) -> bool {
 	}
 
 	ordered_remove(&g.inventory, slot)
+	play_sound(.Use_Item)
 	return true
 }

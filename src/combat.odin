@@ -77,6 +77,9 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 	defender.flash_frames = HIT_FLASH_FRAMES
 	if attacker == &g.player {
 		g.shake_frames = SHAKE_MAX_FRAMES
+		play_sound(.Enemy_Hit)
+	} else {
+		play_sound(.Player_Hit)
 	}
 
 	if attacker == &g.player {

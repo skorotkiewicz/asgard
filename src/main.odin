@@ -13,6 +13,9 @@ main :: proc() {
 	rl.SetTargetFPS(60)
 	rl.SetExitKey(.KEY_NULL) // we handle quit ourselves
 
+	audio_init()
+	defer audio_shutdown()
+
 	g := new_game(fresh_seed())
 	defer destroy_game(&g)
 

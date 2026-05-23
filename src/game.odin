@@ -177,6 +177,7 @@ descend :: proc(g: ^Game) {
 
 	generate_map(g, fresh_seed())
 	compute_fov(g, g.player.x, g.player.y, FOV_RADIUS)
+	play_sound(.Descend)
 
 	log_msg(g, fmt.tprintf("You descend to %s. (depth %d)", realm_name(g.realm), g.depth))
 	if flavor := realm_flavor(g.realm); flavor != "" {

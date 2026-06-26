@@ -70,6 +70,85 @@ make_hound :: proc(x, y: int) -> Entity {
 	}
 }
 
+make_troll :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "T",
+		name          = "troll",
+		color         = PALETTE.troll,
+		hp            = 14,
+		hp_max        = 14,
+		power         = 5,
+		armor         = 1,
+		alive         = true,
+		attack_sound  = .Jotunn_Strike,
+		cooldown_max  = 1,
+	}
+}
+
+make_wraith :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "w",
+		name          = "wraith",
+		color         = PALETTE.wraith,
+		hp            = 5,
+		hp_max        = 5,
+		power         = 3,
+		armor         = 1,
+		alive         = true,
+		attack_sound  = .Draugr_Strike,
+		extra_actions = 1,
+	}
+}
+
+make_fenrir :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "F",
+		name          = "fenrir",
+		color         = PALETTE.fenrir,
+		hp            = 12,
+		hp_max        = 12,
+		power         = 4,
+		armor         = 1,
+		alive         = true,
+		attack_sound  = .Hound_Strike,
+		extra_actions = 1,
+	}
+}
+
+make_surtr :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph        = "S",
+		name         = "surtr",
+		color        = PALETTE.surtr,
+		hp           = 16,
+		hp_max       = 16,
+		power        = 5,
+		armor        = 1,
+		alive        = true,
+		attack_sound = .Jotunn_Strike,
+	}
+}
+
+make_jormungandr :: proc(x, y: int) -> Entity {
+	return Entity{
+		x = x, y = y,
+		glyph         = "M",
+		name          = "jormungandr",
+		color         = PALETTE.jormungandr,
+		hp            = 18,
+		hp_max        = 18,
+		power         = 4,
+		armor         = 2,
+		alive         = true,
+		attack_sound  = .Hel_Strike,
+		cooldown_max  = 1,
+	}
+}
+
 // Hel — queen of the dishonoured dead, sole boss. Acts twice per turn like
 // a hound but hits like a small jotunn. Killing her wins the run.
 make_hel :: proc(x, y: int) -> Entity {
@@ -93,15 +172,25 @@ EnemyKind :: enum {
 	Draugr,
 	Jotunn,
 	Hound,
+	Troll,
+	Wraith,
+	Fenrir,
+	Surtr,
+	Jormungandr,
 	Hel,
 }
 
 make_enemy :: proc(kind: EnemyKind, x, y: int) -> Entity {
 	switch kind {
-	case .Draugr: return make_draugr(x, y)
-	case .Jotunn: return make_jotunn(x, y)
-	case .Hound:  return make_hound(x, y)
-	case .Hel:    return make_hel(x, y)
+	case .Draugr:      return make_draugr(x, y)
+	case .Jotunn:      return make_jotunn(x, y)
+	case .Hound:       return make_hound(x, y)
+	case .Troll:       return make_troll(x, y)
+	case .Wraith:      return make_wraith(x, y)
+	case .Fenrir:      return make_fenrir(x, y)
+	case .Surtr:       return make_surtr(x, y)
+	case .Jormungandr: return make_jormungandr(x, y)
+	case .Hel:         return make_hel(x, y)
 	}
 	return make_draugr(x, y)
 }

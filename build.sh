@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-MODE="${1:-debug}"
+MODE="${1:-}"
 
 case "$MODE" in
   debug)

@@ -4,7 +4,7 @@ A turn-based roguelike set across the Nine Realms of Norse mythology, written in
 
 ## Status
 
-Playable end-to-end prototype. Currently: procedurally generated dungeons across all Nine Realms via Yggdrasil descent, each with its own palette, music, and enemy mix; draugr, jotnar (slow tanks), and hounds (fast packs) hunt you depending on realm; **Hel waits in Helheim — defeat her to win**; field-of-view-limited vision with explored memory; mead, runes of fire, and runes of sight scattered across the world; pack (6 slots) persists between realms.
+Playable end-to-end prototype. Currently: procedurally generated dungeons across all Nine Realms via Yggdrasil descent, each with its own palette, music, and enemy mix; draugr, jotnar, hounds, trolls, and wraiths hunt you depending on realm; Fenrir, Jormungandr, and Surtr guard deeper stairs; **Hel waits in Helheim — defeat her to win**; field-of-view-limited vision with explored memory; mead, runes of fire, and runes of sight scattered across the world; pack (6 slots) persists between realms.
 
 ## Source layout
 
@@ -57,7 +57,7 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] Per-realm background music (looping drones with realm-specific tonality)
 - [x] More enemies — jotnar (slow tanks) and Hel's hounds (fast packs) with realm-weighted spawn tables
 - [x] Bosses + victory condition — Hel guards Helheim; defeating her ends Ragnarok
-- [ ] Even more enemies (trolls, wraiths) and realm-end mini-bosses (Fenrir, Surtr, Jormungandr)
+- [x] Even more enemies (trolls, wraiths) and realm-end mini-bosses (Fenrir, Surtr, Jormungandr)
 - [ ] More item kinds (weapons, armor, throwing axes, scrolls of recall)
-- [ ] Bosses (Fenrir, Jormungandr, Surtr, Hel)
+- [x] Bosses (Fenrir, Jormungandr, Surtr, Hel)
 - [ ] Saving / loading

@@ -29,6 +29,11 @@ PALETTE := struct {
 	draugr:    rl.Color,
 	jotunn:    rl.Color,
 	hound:     rl.Color,
+	troll:       rl.Color,
+	wraith:      rl.Color,
+	fenrir:      rl.Color,
+	surtr:       rl.Color,
+	jormungandr: rl.Color,
 	hel:       rl.Color,
 	ui_fg:     rl.Color,
 	ui_dim:    rl.Color,
@@ -46,6 +51,11 @@ PALETTE := struct {
 	draugr    = {150, 180, 130, 255},
 	jotunn    = {180, 200, 220, 255}, // pale icy blue
 	hound     = {200,  70,  60, 255}, // dark red
+	troll        = {120, 170,  95, 255},
+	wraith       = {150, 160, 210, 255},
+	fenrir       = {210, 210, 190, 255},
+	surtr        = {240, 100,  35, 255},
+	jormungandr = { 80, 190, 160, 255},
 	hel       = {200, 150, 210, 255}, // pale violet, half-corpse
 	ui_fg     = {220, 220, 210, 255},
 	ui_dim    = {130, 130, 140, 255},

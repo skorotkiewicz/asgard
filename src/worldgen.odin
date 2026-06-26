@@ -10,21 +10,36 @@ PLACE_ATTEMPTS   :: 80
 ENEMY_SPAWN_PCT  :: 55 // per non-starting room
 
 // Weighted spawn tables per realm. Weight 0 (or omitted) means that kind
-// never appears via random spawn. Bosses (Hel) are placed deterministically
+// never appears via random spawn. Bosses are placed deterministically
 // elsewhere and so are never listed here — #partial lets us omit them.
 realm_spawn_weights :: proc(r: Realm) -> [EnemyKind]int {
 	switch r {
-	case .Midgard:      return #partial {.Draugr = 10}                              // intro: draugr only
-	case .Asgard:       return #partial {.Draugr =  7, .Jotunn = 2, .Hound = 1}
-	case .Jotunheim:    return #partial {.Draugr =  3, .Jotunn = 6, .Hound = 1}     // giants' country
-	case .Niflheim:     return #partial {.Draugr =  4, .Jotunn = 3, .Hound = 3}     // mixed mist
-	case .Muspelheim:   return #partial {.Draugr =  2, .Jotunn = 2, .Hound = 6}     // fire hounds
-	case .Alfheim:      return #partial {.Draugr =  8, .Jotunn = 1, .Hound = 1}     // lighter realm
-	case .Svartalfheim: return #partial {.Draugr =  4, .Jotunn = 5, .Hound = 1}     // dark deep
-	case .Vanaheim:     return #partial {.Draugr =  4, .Jotunn = 3, .Hound = 3}
-	case .Helheim:      return #partial {.Draugr =  2, .Jotunn = 3, .Hound = 5}     // Hel's hounds
+	case .Midgard:      return #partial {.Draugr = 10}                                             // intro: draugr only
+	case .Asgard:       return #partial {.Draugr =  6, .Jotunn = 2, .Hound = 1, .Wraith = 1}
+	case .Jotunheim:    return #partial {.Draugr =  2, .Jotunn = 5, .Hound = 1, .Troll = 3}          // giants' country
+	case .Niflheim:     return #partial {.Draugr =  3, .Jotunn = 2, .Hound = 2, .Wraith = 4}         // mixed mist
+	case .Muspelheim:   return #partial {.Draugr =  2, .Jotunn = 2, .Hound = 4, .Troll = 1, .Wraith = 1}
+	case .Alfheim:      return #partial {.Draugr =  7, .Jotunn = 1, .Hound = 1, .Wraith = 2}         // lighter realm
+	case .Svartalfheim: return #partial {.Draugr =  3, .Jotunn = 3, .Hound = 1, .Troll = 3, .Wraith = 1}
+	case .Vanaheim:     return #partial {.Draugr =  3, .Jotunn = 2, .Hound = 2, .Troll = 2, .Wraith = 1}
+	case .Helheim:      return #partial {.Draugr =  2, .Jotunn = 2, .Hound = 4, .Troll = 1, .Wraith = 3}
 	}
 	return #partial {.Draugr = 10}
+}
+
+realm_miniboss_kind :: proc(r: Realm) -> (EnemyKind, bool) {
+	switch r {
+	case .Midgard:      return .Draugr, false
+	case .Asgard:       return .Fenrir, true
+	case .Jotunheim:    return .Draugr, false
+	case .Niflheim:     return .Jormungandr, true
+	case .Muspelheim:   return .Surtr, true
+	case .Alfheim:      return .Draugr, false
+	case .Svartalfheim: return .Draugr, false
+	case .Vanaheim:     return .Draugr, false
+	case .Helheim:      return .Draugr, false
+	}
+	return .Draugr, false
 }
 
 pick_enemy_kind :: proc(weights: [EnemyKind]int) -> EnemyKind {
@@ -160,6 +175,7 @@ generate_map :: proc(g: ^Game, seed: u64) {
 	// Helheim is the bottom of Yggdrasil — no stairs onward, and the final
 	// room hosts Hel instead. The player must find and defeat her to win.
 	is_final_realm := g.realm == .Helheim
+	stair_x, stair_y := -1, -1
 
 	if len(rooms) > 0 {
 		px, py := room_center(rooms[0])
@@ -169,6 +185,7 @@ generate_map :: proc(g: ^Game, seed: u64) {
 		if !is_final_realm {
 			sx, sy := room_center(rooms[len(rooms) - 1])
 			set_tile(g, sx, sy, .Stairs_Down)
+			stair_x, stair_y = sx, sy
 		}
 	} else {
 		// extremely unlikely; fall back to center
@@ -184,6 +201,11 @@ generate_map :: proc(g: ^Game, seed: u64) {
 		hx, hy := room_center(rooms[len(rooms) - 1])
 		if spawnable(g, hx, hy) {
 			append(&g.enemies, make_hel(hx, hy))
+		}
+	} else if stair_x >= 0 {
+		boss_kind, has_boss := realm_miniboss_kind(g.realm)
+		if has_boss {
+			append(&g.enemies, make_enemy(boss_kind, stair_x, stair_y))
 		}
 	}
 

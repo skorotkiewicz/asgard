@@ -136,6 +136,11 @@ log_msg :: proc(g: ^Game, msg: string) {
 	}
 }
 
+clear_log :: proc(g: ^Game) {
+	for s in g.log { delete(s) }
+	clear(&g.log)
+}
+
 // ---- lifecycle -------------------------------------------------------------
 
 new_game :: proc(seed: u64) -> Game {
@@ -310,8 +315,16 @@ handle_input :: proc(g: ^Game) {
 		regenerate(g)
 		return
 	}
+	if rl.IsKeyPressed(.F9) {
+		load_game(g)
+		return
+	}
 	if g.dead || g.won {
 		return // only Esc (menu) and R respond when the run is over
+	}
+	if rl.IsKeyPressed(.F5) {
+		save_game(g)
+		return
 	}
 
 	if slot := read_item_slot(); slot >= 0 {

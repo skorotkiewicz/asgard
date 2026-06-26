@@ -253,7 +253,9 @@ draw_sidebar :: proc(g: ^Game) {
 	rl.DrawText(".  wait",             x + 12, hint_y + 64,   14, PALETTE.ui_dim)
 	rl.DrawText("1-6  use pack slot",  x + 12, hint_y + 84,   14, PALETTE.ui_dim)
 	rl.DrawText("R  reshape realm",    x + 12, hint_y + 104,  14, PALETTE.ui_dim)
-	rl.DrawText("Esc  menu",           x + 12, hint_y + 124,  14, PALETTE.ui_dim)
+	rl.DrawText("F5  save",            x + 12, hint_y + 124,  14, PALETTE.ui_dim)
+	rl.DrawText("F9  load",            x + 12, hint_y + 144,  14, PALETTE.ui_dim)
+	rl.DrawText("Esc  menu",           x + 12, hint_y + 164,  14, PALETTE.ui_dim)
 }
 
 draw_log :: proc(g: ^Game) {

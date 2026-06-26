@@ -41,6 +41,8 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 | `y u b n`                 | Diagonal move                |
 | `.`                       | Wait one turn                |
 | `1`–`6`                   | Use that pack slot           |
+| `F5`                      | Save the current run         |
+| `F9`                      | Load the saved run           |
 | `R`                       | Restart from Midgard (full HP, empty pack) |
 | `Esc`                     | Open menu (Resume / New Game / Exit) |
 
@@ -60,4 +62,4 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] Even more enemies (trolls, wraiths) and realm-end mini-bosses (Fenrir, Surtr, Jormungandr)
 - [ ] More item kinds (weapons, armor, throwing axes, scrolls of recall)
 - [x] Bosses (Fenrir, Jormungandr, Surtr, Hel)
-- [ ] Saving / loading
+- [x] Saving / loading

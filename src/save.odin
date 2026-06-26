@@ -250,7 +250,7 @@ load_save_state :: proc(data: []byte) -> (s: SaveState, ok: bool) {
 		kind_i, kind_ok := save_read_int(&r)
 		x, x_ok := save_read_int(&r)
 		y, y_ok := save_read_int(&r)
-		if !kind_ok || kind_i < 0 || kind_i > int(ItemKind.Rune_Sight) || !x_ok || !y_ok || !save_valid_xy(x, y) { return }
+		if !kind_ok || kind_i < 0 || kind_i > int(ItemKind.Scroll_Recall) || !x_ok || !y_ok || !save_valid_xy(x, y) { return }
 		append(&s.items, Item{x = x, y = y, kind = ItemKind(kind_i)})
 	}
 
@@ -259,7 +259,7 @@ load_save_state :: proc(data: []byte) -> (s: SaveState, ok: bool) {
 	if !inv_count_ok || inv_count < 0 || inv_count > INVENTORY_CAP { return }
 	for _ in 0 ..< inv_count {
 		kind_i, kind_ok := save_read_int(&r)
-		if !kind_ok || kind_i < 0 || kind_i > int(ItemKind.Rune_Sight) { return }
+		if !kind_ok || kind_i < 0 || kind_i > int(ItemKind.Scroll_Recall) { return }
 		append(&s.inventory, ItemKind(kind_i))
 	}
 
@@ -353,7 +353,7 @@ save_roundtrip_test :: proc(t: ^testing.T) {
 	g.enemies[0].hp = 7
 	append(&g.items, Item{x = 4, y = 5, kind = .Rune_Fire})
 	append(&g.inventory, ItemKind.Mead)
-	append(&g.inventory, ItemKind.Rune_Sight)
+	append(&g.inventory, ItemKind.Scroll_Recall)
 
 	b := strings.builder_make()
 	defer strings.builder_destroy(&b)
@@ -378,5 +378,5 @@ save_roundtrip_test :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(state.items), 1)
 	testing.expect_value(t, state.items[0].kind, ItemKind.Rune_Fire)
 	testing.expect_value(t, len(state.inventory), 2)
-	testing.expect_value(t, state.inventory[1], ItemKind.Rune_Sight)
+	testing.expect_value(t, state.inventory[1], ItemKind.Scroll_Recall)
 }

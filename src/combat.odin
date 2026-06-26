@@ -252,17 +252,21 @@ attack :: proc(g: ^Game, attacker, defender: ^Entity) {
 	}
 
 	if defender.hp <= 0 {
-		defender.alive = false
-		if defender == &g.player {
-			log_msg(g, "You have fallen. The realm grows still.")
-			g.dead = true
-		} else if defender.is_boss {
-			log_msg(g, fmt.tprintf("%s falls. The cold lifts from your bones.", defender.name))
-			log_msg(g, "Ragnarok ends. The Nine Realms exhale.")
-			g.won = true
-		} else {
-			log_msg(g, fmt.tprintf("The %s crumbles to dust.", defender.name))
-		}
+		defeat_entity(g, defender)
+	}
+}
+
+defeat_entity :: proc(g: ^Game, defender: ^Entity) {
+	defender.alive = false
+	if defender == &g.player {
+		log_msg(g, "You have fallen. The realm grows still.")
+		g.dead = true
+	} else if defender.is_boss {
+		log_msg(g, fmt.tprintf("%s falls. The cold lifts from your bones.", defender.name))
+		log_msg(g, "Ragnarok ends. The Nine Realms exhale.")
+		g.won = true
+	} else {
+		log_msg(g, fmt.tprintf("The %s crumbles to dust.", defender.name))
 	}
 }
 

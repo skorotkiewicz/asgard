@@ -334,6 +334,9 @@ handle_input :: proc(g: ^Game) {
 			if !g.dead {
 				enemy_turn(g)
 			}
+			if g.descend_pending && !g.dead {
+				descend(g)
+			}
 		}
 		return
 	}

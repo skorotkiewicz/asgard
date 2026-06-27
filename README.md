@@ -19,9 +19,11 @@ All files are in the same `asgard` package, so cross-file references are free.
 | `src/fov.odin`    | Recursive shadowcasting field of view                  |
 | `src/items.odin`  | Item kinds, pickup, use effects                        |
 | `src/menu.odin`   | Esc-opened pause menu                                  |
+| `src/save*.odin`  | Save serialization, native file save/load, wasm stubs  |
 | `src/audio.odin`  | Procedurally-synthesized SFX (no asset files)          |
 | `src/music.odin`  | Per-realm looping drone music, also synthesized        |
 | `src/render.odin` | Palette and all raylib drawing                         |
+| `web/index.html`  | Minimal browser wrapper for the wasm build             |
 
 ## Build
 
@@ -31,7 +33,10 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 ./build.sh run        # build + launch
 ./build.sh debug      # debug build only
 ./build.sh release    # optimized build
+./build.sh wasm       # writes web/asgard.wasm + web/odin.js
 ```
+
+Serve `web/` over HTTP to play the wasm build, for example `python3 -m http.server 8080 -d web`.
 
 ## Controls
 
@@ -41,8 +46,8 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 | `y u b n`                 | Diagonal move                |
 | `.`                       | Wait one turn                |
 | `1`–`6`                   | Use that pack slot           |
-| `F5`                      | Save the current run         |
-| `F9`                      | Load the saved run           |
+| `F5`                      | Save the current run (native build) |
+| `F9`                      | Load the saved run (native build)   |
 | `R`                       | Restart from Midgard (full HP, empty pack) |
 | `Esc`                     | Open menu (Resume / New Game / Exit) |
 
@@ -63,3 +68,4 @@ Requires `odin` on PATH (raylib ships in `vendor:raylib` — no extra install).
 - [x] More item kinds (weapons, armor, throwing axes, scrolls of recall)
 - [x] Bosses (Fenrir, Jormungandr, Surtr, Hel)
 - [x] Saving / loading
+- [x] WebAssembly browser build

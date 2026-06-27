@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asgard</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090909;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      outline: none;
+    }
+
+    pre {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      max-width: calc(100vw - 24px);
+      max-height: 30vh;
+      margin: 0;
+      overflow: auto;
+      color: #d8d2bf;
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" tabindex="0"></canvas>
+  <pre id="console"></pre>
+  <script src="odin.js"></script>
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const memory = new odin.WasmMemoryInterface();
+    const keysDown = new Set();
+    const keysPressed = new Set();
+    const startedAt = performance.now();
+
+    function color(c) {
+      const r = c & 255;
+      const g = (c >>> 8) & 255;
+      const b = (c >>> 16) & 255;
+      const a = ((c >>> 24) & 255) / 255;
+      return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+
+    function zero(ptr, len) {
+      if (ptr) new Uint8Array(memory.memory.buffer).fill(0, ptr, ptr + len);
+    }
+
+    function keyCode(e) {
+      if (e.code === "ArrowRight") return 262;
+      if (e.code === "ArrowLeft") return 263;
+      if (e.code === "ArrowDown") return 264;
+      if (e.code === "ArrowUp") return 265;
+      if (e.code === "Escape") return 256;
+      if (e.code === "Period") return 46;
+      if (e.code === "F5") return 294;
+      if (e.code === "F9") return 298;
+      if (/^Key[A-Z]$/.test(e.code)) return e.code.charCodeAt(3);
+      if (/^Digit[0-9]$/.test(e.code)) return e.code.charCodeAt(5);
+      return 0;
+    }
+
+    function captureKey(e, pressed) {
+      const code = keyCode(e);
+      if (!code) return;
+      e.preventDefault();
+      if (pressed && !keysDown.has(code)) keysPressed.add(code);
+      if (pressed) keysDown.add(code);
+      else keysDown.delete(code);
+    }
+
+    window.addEventListener("keydown", (e) => captureKey(e, true));
+    window.addEventListener("keyup", (e) => captureKey(e, false));
+    canvas.addEventListener("click", () => canvas.focus());
+    canvas.focus();
+
+    const raylib = {
+      "wasm/libraylib.a": {
+        SetConfigFlags() {},
+        InitWindow(width, height, title) {
+          canvas.width = width;
+          canvas.height = height;
+          document.title = memory.loadCstring(title) || "Asgard";
+          ctx.imageSmoothingEnabled = false;
+        },
+        SetTargetFPS() {},
+        SetExitKey() {},
+        WindowShouldClose() { return 0; },
+        CloseWindow() {},
+        InitAudioDevice() {},
+        CloseAudioDevice() {},
+        LoadSoundFromWave(out) { zero(out, 24); },
+        LoadMusicStreamFromMemory(out) { zero(out, 36); },
+        UnloadSound() {},
+        UnloadMusicStream() {},
+        PlaySound() {},
+        SetSoundVolume() {},
+        PlayMusicStream() {},
+        StopMusicStream() {},
+        UpdateMusicStream() {},
+        SetMusicVolume() {},
+        GetTime() { return (performance.now() - startedAt) / 1000; },
+        IsKeyDown(key) { return keysDown.has(key) ? 1 : 0; },
+        IsKeyPressed(key) {
+          const hit = keysPressed.has(key);
+          keysPressed.delete(key);
+          return hit ? 1 : 0;
+        },
+        BeginDrawing() {},
+        ClearBackground(c) {
+          ctx.fillStyle = color(c);
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        },
+        DrawRectangle(x, y, width, height, c) {
+          ctx.fillStyle = color(c);
+          ctx.fillRect(x, y, width, height);
+        },
+        DrawText(text, x, y, fontSize, c) {
+          ctx.fillStyle = color(c);
+          ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+          ctx.textBaseline = "top";
+          ctx.fillText(memory.loadCstring(text) || "", x, y);
+        },
+        MeasureText(text, fontSize) {
+          ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+          return Math.ceil(ctx.measureText(memory.loadCstring(text) || "").width);
+        },
+        EndDrawing() {},
+      },
+    };
+
+    odin.runWasm("asgard.wasm", document.getElementById("console"), raylib, memory).catch((err) => {
+      console.error(err);
+      document.getElementById("console").textContent = String(err);
+    });
+  </script>
+</body>
+</html>

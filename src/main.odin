@@ -1,10 +1,9 @@
+#+build !js
+
 package asgard
 
 import "core:fmt"
 import rl "vendor:raylib"
-
-WINDOW_W :: 1280
-WINDOW_H :: 720
 
 main :: proc() {
 	rl.SetConfigFlags({.WINDOW_HIGHDPI, .VSYNC_HINT})
